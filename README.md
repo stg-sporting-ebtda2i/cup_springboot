@@ -1,4 +1,4 @@
-# piehme_cup_springboot
+# kiahk_cup_springboot
 
 ### Backend Setup
 1. Clone the repository
