@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class OwnedPlayersService {
@@ -96,10 +97,16 @@ public class OwnedPlayersService {
 
         walletService.debit(user, player.getPrice(), "Player purchase: " + player.getId());
 
-        // Add with default chemistry 0
-        user.addPlayer(player, 0);
-        userRepository.save(user);
+        int playerChemistry = 0;
+        for (Player p : user.getPlayers()) {
+            if (p.getClub().equals(player.getClub()) || p.getNationality().equals(player.getNationality()) || p.getLeague().equals(player.getLeague())) {
+                playerChemistry++;
+                updateChemistry(p.getId(),true);
+            }
+        }
 
+        user.addPlayer(player, Math.min(playerChemistry, 3));
+        userRepository.save(user);
     }
 
     @Transactional
@@ -117,18 +124,34 @@ public class OwnedPlayersService {
 
         walletService.credit(user, player.getPrice(), "Player sale: " + player.getId());
 
+        for (Player p : user.getPlayers()) {
+            if (p.getClub().equals(player.getClub()) || p.getNationality().equals(player.getNationality()) || p.getLeague().equals(player.getLeague())) {
+                updateChemistry(p.getId(),false);
+            }
+        }
+
         user.removePlayer(player);
         userRepository.save(user);
     }
 
     @Transactional
-    public void updateChemistry(Long playerId, int chemistry) {
+    public void updateChemistry(Long playerId, boolean increase) {
         Long userId = userService.getAuthenticatableId();
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         Player player = playerRepository.findById(playerId).orElseThrow(PlayerNotFoundException::new);
         OwnedPlayer ownedPlayer = ownedPlayerRepository.findByUserAndPlayer(user, player)
                 .orElseThrow(PlayerNotFoundException::new);
-        ownedPlayer.setChemistry(chemistry);
+        if (increase) {
+            if (ownedPlayer.getChemistry() < 3) {
+                ownedPlayer.setChemistry(ownedPlayer.getChemistry() + 1);
+                ownedPlayerRepository.save(ownedPlayer);
+            }
+        } else {
+            if (ownedPlayer.getChemistry() > 0) {
+                ownedPlayer.setChemistry(ownedPlayer.getChemistry() - 1);
+                ownedPlayerRepository.save(ownedPlayer);
+            }
+        }
         ownedPlayerRepository.save(ownedPlayer);
     }
 }
