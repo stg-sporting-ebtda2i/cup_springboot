@@ -14,6 +14,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 
 @Getter
@@ -65,10 +66,8 @@ public class User extends BaseEntity implements Authenticatable {
     @ColumnDefault("true")
     private Boolean leaderboardBoolean;
 
-    @ManyToMany
-    @JoinTable(name = DatabaseEnum.ownedPlayersTable, joinColumns = @JoinColumn(name = DatabaseEnum.userId),
-            inverseJoinColumns = @JoinColumn(name = DatabaseEnum.playerId))
-    private List<Player> players;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OwnedPlayer> ownedPlayers;
 
     @ManyToMany
     @JoinTable(name = DatabaseEnum.ownedIconsTable, joinColumns =  @JoinColumn(name = DatabaseEnum.userId),
@@ -97,7 +96,6 @@ public class User extends BaseEntity implements Authenticatable {
 
     public void setPassword(String password) {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
-
         this.password = encoder.encode(password);
     }
 
@@ -115,7 +113,6 @@ public class User extends BaseEntity implements Authenticatable {
         if (lineupRating == null) {
             return 0.0;
         }
-
         return lineupRating.getLineupRating();
     }
 
@@ -131,7 +128,6 @@ public class User extends BaseEntity implements Authenticatable {
         if (icons == null) {
             icons = new ArrayList<>();
         }
-
         icons.add(icon);
     }
 
@@ -139,7 +135,35 @@ public class User extends BaseEntity implements Authenticatable {
         if (positions == null) {
             positions = new ArrayList<>();
         }
-
         positions.add(position);
+    }
+
+    // Helper to return Player list (read-only snapshot)
+    @Transient
+    public List<Player> getPlayers() {
+        if (ownedPlayers == null) return new ArrayList<>();
+        return ownedPlayers.stream().map(OwnedPlayer::getPlayer).collect(Collectors.toList());
+    }
+
+    public void addPlayer(Player player, int chemistry) {
+        if (ownedPlayers == null) ownedPlayers = new ArrayList<>();
+        // prevent duplicates
+        boolean exists = ownedPlayers.stream().anyMatch(op -> op.getPlayer().equals(player));
+        if (!exists) {
+            OwnedPlayer op = new OwnedPlayer(this, player, chemistry);
+            ownedPlayers.add(op);
+        }
+    }
+
+    public void removePlayer(Player player) {
+        if (ownedPlayers != null) {
+            ownedPlayers.removeIf(op -> op.getPlayer().equals(player));
+        }
+    }
+
+    public Integer getChemistryFor(Player player) {
+        if (ownedPlayers == null) return null;
+        return ownedPlayers.stream().filter(op -> op.getPlayer().equals(player))
+                .map(OwnedPlayer::getChemistry).findFirst().orElse(null);
     }
 }

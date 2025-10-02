@@ -1,12 +1,13 @@
 package com.stgsporting.piehmecup.services;
 
 import com.stgsporting.piehmecup.dtos.players.PlayerDTO;
+import com.stgsporting.piehmecup.entities.OwnedPlayer;
 import com.stgsporting.piehmecup.entities.Player;
 import com.stgsporting.piehmecup.entities.User;
-import com.stgsporting.piehmecup.exceptions.InsufficientCoinsException;
 import com.stgsporting.piehmecup.exceptions.PlayerAlreadyPurchasedException;
 import com.stgsporting.piehmecup.exceptions.PlayerNotFoundException;
 import com.stgsporting.piehmecup.exceptions.UserNotFoundException;
+import com.stgsporting.piehmecup.repositories.OwnedPlayerRepository;
 import com.stgsporting.piehmecup.repositories.PlayerRepository;
 import com.stgsporting.piehmecup.repositories.UserRepository;
 import jakarta.transaction.Transactional;
@@ -30,6 +31,8 @@ public class OwnedPlayersService {
     private WalletService walletService;
     @Autowired
     private PlayerService playerService;
+    @Autowired
+    private OwnedPlayerRepository ownedPlayerRepository;
 
     public List<PlayerDTO> getLineup(){
         try {
@@ -87,13 +90,14 @@ public class OwnedPlayersService {
                 throw new PlayerAlreadyPurchasedException("Cannot purchase more than 2 players of this position");
             }
         }
-        if(user.getSelectedPosition().getName().equals(player.getPosition().getName())) {
+        if(user.getSelectedPosition() != null && user.getSelectedPosition().getName().equals(player.getPosition().getName())) {
             throw new PlayerAlreadyPurchasedException("Cannot purchase player of this position");
         }
 
         walletService.debit(user, player.getPrice(), "Player purchase: " + player.getId());
 
-        user.getPlayers().add(player);
+        // Add with default chemistry 0
+        user.addPlayer(player, 0);
         userRepository.save(user);
 
     }
@@ -113,7 +117,18 @@ public class OwnedPlayersService {
 
         walletService.credit(user, player.getPrice(), "Player sale: " + player.getId());
 
-        user.getPlayers().remove(player);
+        user.removePlayer(player);
         userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateChemistry(Long playerId, int chemistry) {
+        Long userId = userService.getAuthenticatableId();
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        Player player = playerRepository.findById(playerId).orElseThrow(PlayerNotFoundException::new);
+        OwnedPlayer ownedPlayer = ownedPlayerRepository.findByUserAndPlayer(user, player)
+                .orElseThrow(PlayerNotFoundException::new);
+        ownedPlayer.setChemistry(chemistry);
+        ownedPlayerRepository.save(ownedPlayer);
     }
 }

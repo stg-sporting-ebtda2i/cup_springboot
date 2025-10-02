@@ -17,7 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.username in :usernames")
     List<User> findUsersByUsername(List<String> usernames);
 
-    @Query("SELECT u.players FROM User u WHERE u.id = :userId")
+    @Query("SELECT op.player FROM OwnedPlayer op WHERE op.user.id = :userId")
     List<Player> findPlayersByUserId(@Param("userId") Long userId);
 
     boolean existsByUsername(String username);

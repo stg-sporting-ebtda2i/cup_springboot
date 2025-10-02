@@ -34,14 +34,23 @@ public class Player extends BaseEntity {
     @Column(name = DatabaseEnum.name, nullable = false)
     private String name;
 
+    @Column(name = DatabaseEnum.nationality, nullable = false)
+    private String Nationality;
+
+    @Column(name = DatabaseEnum.club, nullable = false)
+    private String Club;
+
+    @Column(name = DatabaseEnum.league, nullable = false)
+    private String League;
+
     @ManyToOne
     @JoinColumn(name = DatabaseEnum.positionId, nullable = false)
     private Position position;
 
-    @ManyToMany(mappedBy = "players")
+    @OneToMany(mappedBy = "player", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     @OnDelete(action = OnDeleteAction.CASCADE)
-    private List<User> user;
+    private List<OwnedPlayer> ownedPlayers;
 
     @ManyToOne
     @JoinColumn(name = DatabaseEnum.levelId, nullable = false)
