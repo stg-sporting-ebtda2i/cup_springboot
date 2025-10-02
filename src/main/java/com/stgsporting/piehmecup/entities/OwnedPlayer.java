@@ -26,6 +26,12 @@ public class OwnedPlayer {
     @JoinColumn(name = "player_id", nullable = false)
     private Player player;
 
+    /* Chemistry ranges from 0 to 3
+     * 0 means no chemistry
+     * 3 means full chemistry
+     *
+     * +1 point for every player can link with another player in the lineup
+     * */
     @Column(name = DatabaseEnum.chemistry, nullable = false)
     private Integer chemistry = 0;
 

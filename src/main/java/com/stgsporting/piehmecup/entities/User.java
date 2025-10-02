@@ -66,6 +66,10 @@ public class User extends BaseEntity implements Authenticatable {
     @ColumnDefault("true")
     private Boolean leaderboardBoolean;
 
+    @Column(name = DatabaseEnum.totalChemistry, nullable = false)
+    @ColumnDefault("0")
+    private Integer totalChemistry;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OwnedPlayer> ownedPlayers;
 
