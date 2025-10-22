@@ -203,7 +203,6 @@ public class UserService implements AuthenticatableService {
         user.setCardRating(50);
         user.setLeaderboardBoolean(true);
         user.setImgLink(userRegisterDTO.getImgLink());
-
         user.setSelectedPosition(defaultPos);
         user.setSelectedIcon(defaultIcon);
         user.addIcon(defaultIcon);

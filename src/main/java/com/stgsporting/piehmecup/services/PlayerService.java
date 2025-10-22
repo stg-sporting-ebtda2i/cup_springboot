@@ -50,6 +50,9 @@ public class PlayerService {
 
         newPlayer.setAvailable(player.getAvailable());
         newPlayer.setPrice(player.getPrice());
+        newPlayer.setClub(player.getClub());
+        newPlayer.setLeague(player.getLeague());
+        newPlayer.setNationality(player.getNationality());
 
         String key = fileService.uploadFile(player.getImage(), "/players");
 
@@ -89,6 +92,9 @@ public class PlayerService {
         playerDTO.setPosition(player.getPosition().getName());
         playerDTO.setAvailable(player.getAvailable());
         playerDTO.setPrice(player.getPrice());
+        playerDTO.setClub(player.getClub());
+        playerDTO.setLeague(player.getLeague());
+        playerDTO.setNationality(player.getNationality());
 
         String url = fileService.generateSignedUrl(player.getImgLink());
 

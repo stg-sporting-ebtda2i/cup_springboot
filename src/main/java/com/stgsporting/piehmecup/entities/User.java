@@ -66,9 +66,9 @@ public class User extends BaseEntity implements Authenticatable {
     @ColumnDefault("true")
     private Boolean leaderboardBoolean;
 
-    @Column(name = DatabaseEnum.totalChemistry, nullable = false)
-    @ColumnDefault("0")
-    private Integer totalChemistry;
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = DatabaseEnum.baseId, referencedColumnName = DatabaseEnum.userId)
+    private UserRating totalChemistry;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OwnedPlayer> ownedPlayers;
@@ -118,6 +118,13 @@ public class User extends BaseEntity implements Authenticatable {
             return 0.0;
         }
         return lineupRating.getLineupRating();
+    }
+
+    public Integer getTotalChemistry() {
+        if (totalChemistry == null) {
+            return 0;
+        }
+        return lineupRating.getTotalChemistry();
     }
 
     public boolean doesntOwn(Position position) {

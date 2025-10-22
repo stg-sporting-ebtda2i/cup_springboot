@@ -97,16 +97,10 @@ public class OwnedPlayersService {
 
         walletService.debit(user, player.getPrice(), "Player purchase: " + player.getId());
 
-        int playerChemistry = 0;
-        for (Player p : user.getPlayers()) {
-            if (p.getClub().equals(player.getClub()) || p.getNationality().equals(player.getNationality()) || p.getLeague().equals(player.getLeague())) {
-                playerChemistry++;
-                updateChemistry(p.getId(),true);
-            }
-        }
-
-        user.addPlayer(player, Math.min(playerChemistry, 3));
+        user.addPlayer(player, 0);
         userRepository.save(user);
+
+        recalculateAllUserChemistry(user);
     }
 
     @Transactional
@@ -124,34 +118,84 @@ public class OwnedPlayersService {
 
         walletService.credit(user, player.getPrice(), "Player sale: " + player.getId());
 
-        for (Player p : user.getPlayers()) {
-            if (p.getClub().equals(player.getClub()) || p.getNationality().equals(player.getNationality()) || p.getLeague().equals(player.getLeague())) {
-                updateChemistry(p.getId(),false);
-            }
-        }
-
         user.removePlayer(player);
         userRepository.save(user);
+
+        recalculateAllUserChemistry(user);
     }
 
     @Transactional
-    public void updateChemistry(Long playerId, boolean increase) {
-        Long userId = userService.getAuthenticatableId();
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        Player player = playerRepository.findById(playerId).orElseThrow(PlayerNotFoundException::new);
-        OwnedPlayer ownedPlayer = ownedPlayerRepository.findByUserAndPlayer(user, player)
-                .orElseThrow(PlayerNotFoundException::new);
-        if (increase) {
-            if (ownedPlayer.getChemistry() < 3) {
-                ownedPlayer.setChemistry(ownedPlayer.getChemistry() + 1);
-                ownedPlayerRepository.save(ownedPlayer);
-            }
-        } else {
-            if (ownedPlayer.getChemistry() > 0) {
-                ownedPlayer.setChemistry(ownedPlayer.getChemistry() - 1);
-                ownedPlayerRepository.save(ownedPlayer);
+    public void recalculateAllUserChemistry(User user) {
+        List<Player> allPlayers = user.getPlayers();
+        List<OwnedPlayer> ownedPlayers = ownedPlayerRepository.findByUser(user);
+
+        for (OwnedPlayer ownedPlayer : ownedPlayers) {
+            Player playerToCalculate = ownedPlayer.getPlayer();
+
+            int newChemistry = calculateChemistryForPlayer(playerToCalculate, allPlayers);
+
+            ownedPlayer.setChemistry(newChemistry);
+            ownedPlayerRepository.save(ownedPlayer);
+        }
+    }
+
+    private int calculateChemistryForPlayer(Player playerToCalculate, List<Player> allPlayers) {
+        boolean isCalculatingForIcon = "icon".equals(playerToCalculate.getLeague());
+        if (isCalculatingForIcon) {
+            return 3;
+        }
+
+        int clubCount = 0;
+        int leagueCount = 0;
+        int nationCount = 0;
+
+        for (Player otherPlayer : allPlayers) {
+            boolean isOtherPlayerIcon = "icon".equals(otherPlayer.getLeague());
+
+            if (isOtherPlayerIcon) {
+                leagueCount++;
+                if (otherPlayer.getNationality().equals(playerToCalculate.getNationality())) {
+                    nationCount += 2;
+                }
+            } else {
+                if (otherPlayer.getClub().equals(playerToCalculate.getClub())) {
+                    clubCount++;
+                }
+                if (otherPlayer.getLeague().equals(playerToCalculate.getLeague())) {
+                    leagueCount++;
+                }
+                if (otherPlayer.getNationality().equals(playerToCalculate.getNationality())) {
+                    nationCount++;
+                }
             }
         }
-        ownedPlayerRepository.save(ownedPlayer);
+
+        int totalPoints = 0;
+        totalPoints += getClubPoints(clubCount);
+        totalPoints += getLeaguePoints(leagueCount);
+        totalPoints += getNationPoints(nationCount);
+
+        return Math.min(3, totalPoints);
+    }
+
+    private int getClubPoints(int count) {
+        if (count >= 7) return 3;
+        if (count >= 4) return 2;
+        if (count >= 2) return 1;
+        return 0;
+    }
+
+    private int getLeaguePoints(int count) {
+        if (count >= 8) return 3;
+        if (count >= 5) return 2;
+        if (count >= 3) return 1;
+        return 0;
+    }
+
+    private int getNationPoints(int count) {
+        if (count >= 8) return 3;
+        if (count >= 5) return 2;
+        if (count >= 2) return 1;
+        return 0;
     }
 }

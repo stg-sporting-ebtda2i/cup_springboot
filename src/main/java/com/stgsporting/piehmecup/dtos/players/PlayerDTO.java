@@ -14,6 +14,9 @@ public class PlayerDTO {
     private String imageUrl;
     private String imageKey;
     private Integer price;
+    private String club;
+    private String league;
+    private String nationality;
 
     @Override
     public String toString() {
