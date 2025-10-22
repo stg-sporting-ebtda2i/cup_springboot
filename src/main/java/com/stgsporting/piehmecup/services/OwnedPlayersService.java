@@ -11,6 +11,7 @@ import com.stgsporting.piehmecup.repositories.OwnedPlayerRepository;
 import com.stgsporting.piehmecup.repositories.PlayerRepository;
 import com.stgsporting.piehmecup.repositories.UserRepository;
 import jakarta.transaction.Transactional;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -35,30 +36,43 @@ public class OwnedPlayersService {
     @Autowired
     private OwnedPlayerRepository ownedPlayerRepository;
 
+    @NotNull
+    private List<PlayerDTO> getPlayerDTOS(Long userId) {
+        Optional<User> user = userRepository.findById(userId);
+        if (user.isEmpty())
+            throw new UserNotFoundException();
+
+        List<Player> players = userRepository.findPlayersByUserId(userId);
+        List<PlayerDTO> playerDTOS = new ArrayList<>();
+        for(Player player : players) {
+            Optional<OwnedPlayer> op =
+                    ownedPlayerRepository.findByUserAndPlayer(user.get(),player);
+            if (op.isEmpty())
+                throw new PlayerNotFoundException();
+            playerDTOS.add(playerService.ownedPlayerToDTO(player,op.get()));
+        }
+
+        return playerDTOS;
+    }
+
     public List<PlayerDTO> getLineup(){
         try {
             Long userId = userService.getAuthenticatableId();
-            List<Player> players = userRepository.findPlayersByUserId(userId);
-            List<PlayerDTO> playerDTOS = new ArrayList<>();
-            for(Player player : players)
-                playerDTOS.add(playerService.playerToDTO(player));
-
-            return playerDTOS;
+            return getPlayerDTOS(userId);
         } catch (UserNotFoundException e) {
-            throw new UserNotFoundException();
+            throw new UserNotFoundException("User not found");
+        } catch (PlayerNotFoundException e) {
+            throw new PlayerNotFoundException("Player not found in owned players");
         }
     }
 
     public List<PlayerDTO> getLineup(Long userId){
         try {
-            List<Player> players = userRepository.findPlayersByUserId(userId);
-            List<PlayerDTO> playerDTOS = new ArrayList<>();
-            for(Player player : players)
-                playerDTOS.add(playerService.playerToDTO(player));
-
-            return playerDTOS;
+            return getPlayerDTOS(userId);
         } catch (UserNotFoundException e) {
             throw new UserNotFoundException("User not found");
+        } catch (PlayerNotFoundException e) {
+            throw new PlayerNotFoundException("Player not found in owned players");
         }
     }
 

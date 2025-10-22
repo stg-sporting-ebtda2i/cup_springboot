@@ -4,12 +4,14 @@ import com.stgsporting.piehmecup.authentication.Authenticatable;
 import com.stgsporting.piehmecup.dtos.players.PlayerDTO;
 import com.stgsporting.piehmecup.dtos.players.PlayerUploadDTO;
 import com.stgsporting.piehmecup.entities.Level;
+import com.stgsporting.piehmecup.entities.OwnedPlayer;
 import com.stgsporting.piehmecup.entities.Player;
 import com.stgsporting.piehmecup.entities.Position;
 import com.stgsporting.piehmecup.enums.Positions;
 import com.stgsporting.piehmecup.exceptions.PlayerNotFoundException;
 import com.stgsporting.piehmecup.repositories.PlayerRepository;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -86,6 +88,17 @@ public class PlayerService {
     }
 
     public PlayerDTO playerToDTO(Player player) {
+        return getDto(player);
+    }
+
+    public PlayerDTO ownedPlayerToDTO(Player player, OwnedPlayer op) {
+        PlayerDTO playerDTO = getDto(player);
+        playerDTO.setChemistry(op.getChemistry());
+        return playerDTO;
+    }
+
+    @NotNull
+    private PlayerDTO getDto(Player player) {
         PlayerDTO playerDTO = new PlayerDTO();
         playerDTO.setId(player.getId());
         playerDTO.setName(player.getName());
