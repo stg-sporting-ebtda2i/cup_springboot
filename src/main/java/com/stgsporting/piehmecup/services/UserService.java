@@ -267,6 +267,7 @@ public class UserService implements AuthenticatableService {
             dto.setIconUrl(fileService.generateSignedUrl(u.getSelectedIcon().getImgLink()));
 
             dto.setCardRating(u.getCardRating());
+            dto.setChemistry(u.getTotalChemistry());
             usersInLeaderboard.add(dto);
         }
 
