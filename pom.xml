@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.stgsporting</groupId>
-	<artifactId>piehmecup</artifactId>
+	<artifactId>cup</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>piehmecup</name>
+	<name>cup</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
 	<licenses>
@@ -126,7 +126,7 @@
 	</dependencies>
 
 	<build>
-		<finalName>piehme_cup</finalName>
+		<finalName>cup</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
