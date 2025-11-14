@@ -20,45 +20,21 @@ jobs:
           architecture: x64
 
       - name: Build with Maven
-        run: mvn clean package -DskipTests\
-        
-      - name: Debug SSH key structure (masked)
+        run: mvn clean package -DskipTests
+
+      - name: Write SSH key to file
         run: |
-          key="${{ secrets.SSH_PRIVATE_KEY }}"
-          first_line=$(printf '%s\n' "$key" | head -n1)
-          last_line=$(printf '%s\n' "$key" | tail -n1)
-          total_lines=$(printf '%s\n' "$key" | wc -l | tr -d ' ')
-          echo "Total lines: $total_lines"
-          echo "First line length: ${#first_line}"
-          echo "Last line length: ${#last_line}"
-          # Fully masked (same length, all asterisks)
-          printf 'Masked first line: %*s\n' "${#first_line}" "" | tr ' ' '*'
-          printf 'Masked last  line: %*s\n' "${#last_line}"  "" | tr ' ' '*'
-          # Line ending diagnostics
-          if [[ "$first_line" == *$'\r' ]]; then echo "CR detected on first line"; fi
-          if [[ "$last_line" == *$'\r' ]]; then echo "CR detected on last line"; fi
-        shell: bash
-        
-      - name: Add SSH Private Key
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
 
-      - name: Deploy to Server
-        uses: appleboy/scp-action@v0.1.6
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "target/cup.jar"
-          target: "/opt/cup/incoming/"
-          strip_components: 1
-          timeout: 600s
+      # - name: (Optional) Debug SSH connectivity
+      #   run: |
+      #     ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo CI_SSH_OK'
 
-      - name: Run Deployment Script
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: /opt/scripts/deploy.sh
+      - name: Deploy artifact via scp
+        run: |
+          scp -o StrictHostKeyChecking=no -i /tmp/deploy_key target/cup.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/cup/incoming/
+
+      - name: Run deployment script
+        run: |
+          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} /opt/scripts/deploy.sh
