@@ -20,8 +20,25 @@ jobs:
           architecture: x64
 
       - name: Build with Maven
-        run: mvn clean package -DskipTests
-
+        run: mvn clean package -DskipTests\
+        
+      - name: Debug SSH key structure (masked)
+        run: |
+          key="${{ secrets.SSH_PRIVATE_KEY }}"
+          first_line=$(printf '%s\n' "$key" | head -n1)
+          last_line=$(printf '%s\n' "$key" | tail -n1)
+          total_lines=$(printf '%s\n' "$key" | wc -l | tr -d ' ')
+          echo "Total lines: $total_lines"
+          echo "First line length: ${#first_line}"
+          echo "Last line length: ${#last_line}"
+          # Fully masked (same length, all asterisks)
+          printf 'Masked first line: %*s\n' "${#first_line}" "" | tr ' ' '*'
+          printf 'Masked last  line: %*s\n' "${#last_line}"  "" | tr ' ' '*'
+          # Line ending diagnostics
+          if [[ "$first_line" == *$'\r' ]]; then echo "CR detected on first line"; fi
+          if [[ "$last_line" == *$'\r' ]]; then echo "CR detected on last line"; fi
+        shell: bash
+        
       - name: Add SSH Private Key
         uses: webfactory/ssh-agent@v0.7.0
         with:
