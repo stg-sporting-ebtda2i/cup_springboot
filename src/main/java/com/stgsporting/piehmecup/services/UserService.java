@@ -203,7 +203,6 @@ public class UserService implements AuthenticatableService {
         user.setCardRating(50);
         user.setLeaderboardBoolean(true);
         user.setImgLink(userRegisterDTO.getImgLink());
-
         user.setSelectedPosition(defaultPos);
         user.setSelectedIcon(defaultIcon);
         user.addIcon(defaultIcon);
@@ -268,6 +267,7 @@ public class UserService implements AuthenticatableService {
             dto.setIconUrl(fileService.generateSignedUrl(u.getSelectedIcon().getImgLink()));
 
             dto.setCardRating(u.getCardRating());
+            dto.setChemistry(u.getTotalChemistry());
             usersInLeaderboard.add(dto);
         }
 

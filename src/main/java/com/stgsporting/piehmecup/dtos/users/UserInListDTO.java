@@ -17,6 +17,7 @@ public class UserInListDTO {
     private Double lineupRating;
     private String imageUrl;
     private String imageKey;
+    private Integer chemistry;
     private String selectedIcon;
     private Boolean confirmed;
 
@@ -28,6 +29,7 @@ public class UserInListDTO {
         this.lineupRating = user.getLineupRating();
         this.confirmed = user.getConfirmed();
         Icon selectedIcon = user.getSelectedIcon();
+        this.chemistry = user.getTotalChemistry();
 
         this.imageKey = user.getImgLink();
         this.imageUrl = fileService.generateSignedUrl(user.getImgLink());

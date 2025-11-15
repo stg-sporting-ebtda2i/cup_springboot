@@ -1,20 +1,23 @@
 package com.stgsporting.piehmecup.services;
 
 import com.stgsporting.piehmecup.dtos.players.PlayerDTO;
+import com.stgsporting.piehmecup.entities.OwnedPlayer;
 import com.stgsporting.piehmecup.entities.Player;
 import com.stgsporting.piehmecup.entities.User;
-import com.stgsporting.piehmecup.exceptions.InsufficientCoinsException;
 import com.stgsporting.piehmecup.exceptions.PlayerAlreadyPurchasedException;
 import com.stgsporting.piehmecup.exceptions.PlayerNotFoundException;
 import com.stgsporting.piehmecup.exceptions.UserNotFoundException;
+import com.stgsporting.piehmecup.repositories.OwnedPlayerRepository;
 import com.stgsporting.piehmecup.repositories.PlayerRepository;
 import com.stgsporting.piehmecup.repositories.UserRepository;
 import jakarta.transaction.Transactional;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class OwnedPlayersService {
@@ -30,31 +33,46 @@ public class OwnedPlayersService {
     private WalletService walletService;
     @Autowired
     private PlayerService playerService;
+    @Autowired
+    private OwnedPlayerRepository ownedPlayerRepository;
+
+    @NotNull
+    private List<PlayerDTO> getPlayerDTOS(Long userId) {
+        Optional<User> user = userRepository.findById(userId);
+        if (user.isEmpty())
+            throw new UserNotFoundException();
+
+        List<Player> players = userRepository.findPlayersByUserId(userId);
+        List<PlayerDTO> playerDTOS = new ArrayList<>();
+        for(Player player : players) {
+            Optional<OwnedPlayer> op =
+                    ownedPlayerRepository.findByUserAndPlayer(user.get(),player);
+            if (op.isEmpty())
+                throw new PlayerNotFoundException();
+            playerDTOS.add(playerService.ownedPlayerToDTO(player,op.get()));
+        }
+
+        return playerDTOS;
+    }
 
     public List<PlayerDTO> getLineup(){
         try {
             Long userId = userService.getAuthenticatableId();
-            List<Player> players = userRepository.findPlayersByUserId(userId);
-            List<PlayerDTO> playerDTOS = new ArrayList<>();
-            for(Player player : players)
-                playerDTOS.add(playerService.playerToDTO(player));
-
-            return playerDTOS;
+            return getPlayerDTOS(userId);
         } catch (UserNotFoundException e) {
-            throw new UserNotFoundException();
+            throw new UserNotFoundException("User not found");
+        } catch (PlayerNotFoundException e) {
+            throw new PlayerNotFoundException("Player not found in owned players");
         }
     }
 
     public List<PlayerDTO> getLineup(Long userId){
         try {
-            List<Player> players = userRepository.findPlayersByUserId(userId);
-            List<PlayerDTO> playerDTOS = new ArrayList<>();
-            for(Player player : players)
-                playerDTOS.add(playerService.playerToDTO(player));
-
-            return playerDTOS;
+            return getPlayerDTOS(userId);
         } catch (UserNotFoundException e) {
             throw new UserNotFoundException("User not found");
+        } catch (PlayerNotFoundException e) {
+            throw new PlayerNotFoundException("Player not found in owned players");
         }
     }
 
@@ -87,15 +105,16 @@ public class OwnedPlayersService {
                 throw new PlayerAlreadyPurchasedException("Cannot purchase more than 2 players of this position");
             }
         }
-        if(user.getSelectedPosition().getName().equals(player.getPosition().getName())) {
+        if(user.getSelectedPosition() != null && user.getSelectedPosition().getName().equals(player.getPosition().getName())) {
             throw new PlayerAlreadyPurchasedException("Cannot purchase player of this position");
         }
 
         walletService.debit(user, player.getPrice(), "Player purchase: " + player.getId());
 
-        user.getPlayers().add(player);
+        user.addPlayer(player, 0);
         userRepository.save(user);
 
+        recalculateAllUserChemistry(user);
     }
 
     @Transactional
@@ -113,7 +132,84 @@ public class OwnedPlayersService {
 
         walletService.credit(user, player.getPrice(), "Player sale: " + player.getId());
 
-        user.getPlayers().remove(player);
+        user.removePlayer(player);
         userRepository.save(user);
+
+        recalculateAllUserChemistry(user);
+    }
+
+    @Transactional
+    public void recalculateAllUserChemistry(User user) {
+        List<Player> allPlayers = user.getPlayers();
+        List<OwnedPlayer> ownedPlayers = ownedPlayerRepository.findByUser(user);
+
+        for (OwnedPlayer ownedPlayer : ownedPlayers) {
+            Player playerToCalculate = ownedPlayer.getPlayer();
+
+            int newChemistry = calculateChemistryForPlayer(playerToCalculate, allPlayers);
+
+            ownedPlayer.setChemistry(newChemistry);
+            ownedPlayerRepository.save(ownedPlayer);
+        }
+    }
+
+    private int calculateChemistryForPlayer(Player playerToCalculate, List<Player> allPlayers) {
+        boolean isCalculatingForIcon = "icon".equals(playerToCalculate.getLeague());
+        if (isCalculatingForIcon) {
+            return 3;
+        }
+
+        int clubCount = 0;
+        int leagueCount = 0;
+        int nationCount = 0;
+
+        for (Player otherPlayer : allPlayers) {
+            boolean isOtherPlayerIcon = "icon".equals(otherPlayer.getLeague());
+
+            if (isOtherPlayerIcon) {
+                leagueCount++;
+                if (otherPlayer.getNationality().equals(playerToCalculate.getNationality())) {
+                    nationCount += 2;
+                }
+            } else {
+                if (otherPlayer.getClub().equals(playerToCalculate.getClub())) {
+                    clubCount++;
+                }
+                if (otherPlayer.getLeague().equals(playerToCalculate.getLeague())) {
+                    leagueCount++;
+                }
+                if (otherPlayer.getNationality().equals(playerToCalculate.getNationality())) {
+                    nationCount++;
+                }
+            }
+        }
+
+        int totalPoints = 0;
+        totalPoints += getClubPoints(clubCount);
+        totalPoints += getLeaguePoints(leagueCount);
+        totalPoints += getNationPoints(nationCount);
+
+        return Math.min(3, totalPoints);
+    }
+
+    private int getClubPoints(int count) {
+        if (count >= 7) return 3;
+        if (count >= 4) return 2;
+        if (count >= 2) return 1;
+        return 0;
+    }
+
+    private int getLeaguePoints(int count) {
+        if (count >= 8) return 3;
+        if (count >= 5) return 2;
+        if (count >= 3) return 1;
+        return 0;
+    }
+
+    private int getNationPoints(int count) {
+        if (count >= 8) return 3;
+        if (count >= 5) return 2;
+        if (count >= 2) return 1;
+        return 0;
     }
 }
