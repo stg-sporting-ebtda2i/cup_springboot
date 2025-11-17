@@ -1,4 +1,4 @@
-# kiahk_cup_springboot
+# cup_springboot
 
 ### Backend Setup
 1. Clone the repository
@@ -12,21 +12,25 @@
     ```bash
     mysql --version
     ```
-1. Copy application.example.properties to application.properties
+1. Copy .example.env to .env and add your credentials
     ```bash
     cp .env.example .env
     ```
+1. Copy the private_key.pem in the same directory of .env
+   ```bash
+   cp /path/to/private_key.pem ./
+   ```
 1. Create a database in MySQL
     ```sql
-    CREATE DATABASE piehme_cup;
+    CREATE DATABASE cup;
     ```
 1. Create the user for the database
     ```sql
-    CREATE USER 'piehme_cup_user'@'%' IDENTIFIED BY 'password@123';
+    CREATE USER 'cup_user'@'%' IDENTIFIED BY 'password@123';
     ```
 1. Grant the user all privileges on the database
     ```sql
-   GRANT ALL PRIVILEGES ON piehme_cup.* TO 'piehme_cup_user'@'%';
+   GRANT ALL PRIVILEGES ON cup.* TO 'cup_user'@'%';
     ```
 1. Apply changes to the database
     ```sql
