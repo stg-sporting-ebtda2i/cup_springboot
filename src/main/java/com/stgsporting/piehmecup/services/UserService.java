@@ -226,6 +226,12 @@ public class UserService implements AuthenticatableService {
         return userRepository.findUsersBySchoolYearPaginated(schoolYear,search + "%", page);
     }
 
+    public Page<User> getUsersBySchoolYearAndCoins(SchoolYear schoolYear, String search, Pageable page) {
+        if(search == null) search = "";
+
+        return userRepository.findUsersBySchoolYearPaginatedAndCoins(schoolYear,search + "%", page);
+    }
+
     public LeaderboardDTO getLeaderboard() {
         SchoolYear schoolYear = getSchoolYear();
         List<User> users = userRepository.findUsersBySchoolYear(schoolYear);
