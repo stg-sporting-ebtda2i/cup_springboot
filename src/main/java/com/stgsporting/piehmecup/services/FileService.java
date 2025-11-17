@@ -1,10 +1,8 @@
 package com.stgsporting.piehmecup.services;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
@@ -21,10 +19,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.PrivateKey;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Random;
@@ -68,9 +65,10 @@ public class FileService {
 
         CannedSignerRequest request;
         try {
+            Path privateKeyPath = resolvePrivateKeyPath();
             request = CannedSignerRequest.builder()
                     .resourceUrl("https://" + domain + "/" + key)
-                    .privateKey(Paths.get(System.getProperty("user.dir") + "/" +  keyPath))
+                    .privateKey(privateKeyPath)
                     .keyPairId(keyId)
                     .expirationDate(expirationTime)
                     .build();
@@ -81,6 +79,36 @@ public class FileService {
         SignedUrl signedUrl = cloudFrontUtilities.getSignedUrlWithCannedPolicy(request);
 
         return signedUrl.url();
+    }
+
+    /**
+     * Resolve the CloudFront private key path robustly:
+     * - If keyPath exists relative to the current working directory, use it.
+     * - Otherwise try to load it from the application classpath (e.g., bundled in resources)
+     *   by copying it to a temporary file and returning that path.
+     */
+    private Path resolvePrivateKeyPath() throws IOException {
+        Path cwdPath = Paths.get(System.getProperty("user.dir"), keyPath);
+        if (Files.exists(cwdPath)) {
+            return cwdPath;
+        }
+
+        // Try absolute path as provided
+        Path absPath = Paths.get(keyPath);
+        if (Files.exists(absPath)) {
+            return absPath;
+        }
+
+        // Fallback: load from classpath and write to a temp file
+        try (InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(keyPath)) {
+            if (is == null) {
+                throw new FileNotFoundException("CloudFront private key not found at '" + keyPath + "' or in classpath.");
+            }
+            Path temp = Files.createTempFile("cloudfront-private-key", ".pem");
+            Files.copy(is, temp, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            temp.toFile().deleteOnExit();
+            return temp;
+        }
     }
 
     private S3Client s3Client;
