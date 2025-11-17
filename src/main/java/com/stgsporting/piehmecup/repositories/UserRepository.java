@@ -39,4 +39,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findUsersBySchoolYearPaginated(SchoolYear schoolYear, String search, Pageable pageable);
 
     List<User> findAllBySchoolYear(SchoolYear schoolYear);
+
+    @Query("""
+            SELECT u FROM User u
+            WHERE u.schoolYear = :schoolYear
+            ORDER BY (
+                SELECT COALESCE(SUM(t.amount),0) FROM TRANSACTIONS t
+                WHERE t.user = u AND t.type = 'CREDIT' AND (
+                    t.description LIKE '%Admin%' OR
+                    t.description LIKE '%Attended%' OR
+                    t.description LIKE '%Question%' OR
+                    t.description LIKE '%Quiz%'
+                )
+            ) DESC, u.id ASC
+            """)
+    List<User> findUsersBySchoolYearSortedByEarnedCoins(SchoolYear schoolYear);
 }
