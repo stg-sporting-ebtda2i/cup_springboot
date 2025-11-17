@@ -2,6 +2,7 @@ package com.stgsporting.piehmecup.services;
 
 
 import com.stgsporting.piehmecup.authentication.Authenticatable;
+import com.stgsporting.piehmecup.dtos.users.LeaderboardCoinsDTO;
 import com.stgsporting.piehmecup.dtos.users.LeaderboardDTO;
 import com.stgsporting.piehmecup.dtos.UserRegisterDTO;
 import com.stgsporting.piehmecup.dtos.users.UserInLeaderboardDTO;
@@ -226,15 +227,21 @@ public class UserService implements AuthenticatableService {
     }
 
     public LeaderboardDTO getLeaderboard() {
+        SchoolYear schoolYear = getSchoolYear();
+        List<User> users = userRepository.findUsersBySchoolYear(schoolYear);
+        return getLeaderboardDTO(users);
+    }
+
+    public LeaderboardCoinsDTO getCoinsLeaderboard() {
+        SchoolYear schoolYear = getSchoolYear();
+        return getLeaderboardCoinsDTO(schoolYear);
+    }
+
+    private SchoolYear getSchoolYear() {
         Long userId = getAuthenticatableId();
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         Long schoolYearId = user.getSchoolYear().getId();
-        SchoolYear schoolYear = schoolYearRepository.findSchoolYearById(schoolYearId).orElseThrow(SchoolYearNotFound::new);
-
-        List<User> users = userRepository.findUsersBySchoolYear(schoolYear);
-//        List<User> users = userRepository.findUsersBySchoolYear(schoolYear);
-
-        return getLeaderboardDTO(users);
+        return schoolYearRepository.findSchoolYearById(schoolYearId).orElseThrow(SchoolYearNotFound::new);
     }
 
     @NotNull
@@ -277,6 +284,32 @@ public class UserService implements AuthenticatableService {
         leaderboard.setAvgRating(users.isEmpty() ? 0.0 : avgRating / users.size());
         leaderboard.setAvgRating(Math.round(leaderboard.getAvgRating() * 100.0) / 100.0);
 
+        return leaderboard;
+    }
+
+    @NotNull
+    private LeaderboardCoinsDTO getLeaderboardCoinsDTO(SchoolYear schoolYear) {
+        List<UserInLeaderboardDTO> usersInCoinsLeaderboard = new ArrayList<>();
+        List<User> users = userRepository.findUsersBySchoolYearSortedByEarnedCoins(schoolYear);
+
+        for (User u : users) {
+            UserInLeaderboardDTO dto = new UserInLeaderboardDTO();
+            dto.setConfirmed(u.getConfirmed());
+            dto.setName(u.getUsername());
+            dto.setId(u.getId());
+            dto.setPosition(u.getSelectedPosition().getName());
+            dto.setLineupRating(u.getLineupRating());
+            dto.setImageKey(u.getImgLink());
+            dto.setImageUrl(fileService.generateSignedUrl(u.getImgLink()));
+            dto.setIconKey(u.getSelectedIcon().getImgLink());
+            dto.setIconUrl(fileService.generateSignedUrl(u.getSelectedIcon().getImgLink()));
+            dto.setCardRating(u.getCardRating());
+            dto.setChemistry(u.getTotalChemistry());
+            usersInCoinsLeaderboard.add(dto);
+        }
+
+        LeaderboardCoinsDTO leaderboard = new LeaderboardCoinsDTO();
+        leaderboard.setUsers(usersInCoinsLeaderboard);
         return leaderboard;
     }
 

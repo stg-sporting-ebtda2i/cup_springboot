@@ -97,7 +97,7 @@ public class AttendanceService {
 
         Price price = attendance.getPrice();
 
-        walletService.credit(attendance.getUser(), price.getCoins(), price.getName());
+        walletService.credit(attendance.getUser(), price.getCoins(), "Attended" + price.getName());
 
         attendanceRepository.save(attendance);
     }

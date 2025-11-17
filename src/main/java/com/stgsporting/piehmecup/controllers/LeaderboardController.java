@@ -16,4 +16,9 @@ public class LeaderboardController {
     public ResponseEntity<Object> getLeaderboard() {
         return ResponseEntity.ok().body(userService.getLeaderboard());
     }
+
+    @GetMapping("/coins-leaderboard")
+    public ResponseEntity<Object> getCoinsLeaderboard() {
+        return ResponseEntity.ok().body(userService.getCoinsLeaderboard());
+    }
 }
