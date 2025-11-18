@@ -35,7 +35,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "AND u.lineupRating.lineupRating > 4.55 ORDER BY u.lineupRating.lineupRating desc, u.id asc")
     List<User> findUsersBySchoolYear(SchoolYear schoolYear);
 
-    @Query("SELECT u FROM User u WHERE u.schoolYear = :schoolYear and u.username LIKE :search ORDER BY u.lineupRating.lineupRating desc, u.id asc")
+    @Query("SELECT u FROM User u LEFT JOIN u.totalChemistry tc WHERE u.schoolYear = :schoolYear and u.username LIKE :search ORDER BY (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) desc, u.id asc")
     Page<User> findUsersBySchoolYearPaginated(SchoolYear schoolYear, String search, Pageable pageable);
 
     @Query("""
