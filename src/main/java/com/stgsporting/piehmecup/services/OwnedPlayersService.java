@@ -159,9 +159,9 @@ public class OwnedPlayersService {
             return 3;
         }
 
-        int clubCount = 1; // user card adds 1 chemistry count to the player's club
-        int leagueCount = 2; // user card adds 1 chemistry count to the player's club
-        int nationCount = 0;
+        int clubCount = 2; // user card adds 1 chemistry count to the player's club
+        int leagueCount = 3; // user card adds 1 chemistry count to the player's club
+        int nationCount = 1;
 
         for (Player otherPlayer : allPlayers) {
             if (otherPlayer == playerToCalculate)
