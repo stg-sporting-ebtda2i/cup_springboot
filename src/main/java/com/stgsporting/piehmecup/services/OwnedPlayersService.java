@@ -160,7 +160,7 @@ public class OwnedPlayersService {
         }
 
         int clubCount = 2; // user card adds 1 chemistry count to the player's club
-        int leagueCount = 3; // user card adds 1 chemistry count to the player's club
+        int leagueCount = 2; // user card adds 1 chemistry count to the player's club
         int nationCount = 1;
 
         for (Player otherPlayer : allPlayers) {
@@ -169,7 +169,7 @@ public class OwnedPlayersService {
             boolean isOtherPlayerIcon = "icon".equals(otherPlayer.getLeague());
 
             if (isOtherPlayerIcon) {
-                leagueCount+=2;
+                leagueCount++;
                 clubCount++;
                 if (otherPlayer.getNationality().equals(playerToCalculate.getNationality())) {
                     nationCount++;
