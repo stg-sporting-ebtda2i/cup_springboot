@@ -164,6 +164,8 @@ public class OwnedPlayersService {
         int nationCount = 0;
 
         for (Player otherPlayer : allPlayers) {
+            if (otherPlayer == playerToCalculate)
+                continue;
             boolean isOtherPlayerIcon = "icon".equals(otherPlayer.getLeague());
 
             if (isOtherPlayerIcon) {
