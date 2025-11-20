@@ -159,17 +159,18 @@ public class OwnedPlayersService {
             return 3;
         }
 
-        int clubCount = 0;
-        int leagueCount = 0;
+        int clubCount = 1; // user card adds 1 chemistry count to the player's club
+        int leagueCount = 2; // user card adds 1 chemistry count to the player's club
         int nationCount = 0;
 
         for (Player otherPlayer : allPlayers) {
             boolean isOtherPlayerIcon = "icon".equals(otherPlayer.getLeague());
 
             if (isOtherPlayerIcon) {
-                leagueCount++;
+                leagueCount+=2;
+                clubCount++;
                 if (otherPlayer.getNationality().equals(playerToCalculate.getNationality())) {
-                    nationCount += 2;
+                    nationCount++;
                 }
             } else {
                 if (otherPlayer.getClub().equals(playerToCalculate.getClub())) {
@@ -179,6 +180,9 @@ public class OwnedPlayersService {
                     leagueCount++;
                 }
                 if (otherPlayer.getNationality().equals(playerToCalculate.getNationality())) {
+                    nationCount++;
+                }
+                if (otherPlayer.getNationality().equals("Egypt")) {
                     nationCount++;
                 }
             }
