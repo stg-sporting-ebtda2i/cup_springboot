@@ -163,6 +163,9 @@ public class OwnedPlayersService {
         int leagueCount = 2; // user card adds 1 chemistry count to the player's club
         int nationCount = 1;
 
+                        if (playerToCalculate.getNationality().equals("Egypt")) {
+                    nationCount++;
+                }
         for (Player otherPlayer : allPlayers) {
             if (otherPlayer == playerToCalculate)
                 continue;
@@ -184,9 +187,6 @@ public class OwnedPlayersService {
                 if (otherPlayer.getNationality().equals(playerToCalculate.getNationality())) {
                     nationCount++;
                 }
-                //if (otherPlayer.getNationality().equals("Egypt")) {
-                    //nationCount++;
-                //}
             }
         }
 
