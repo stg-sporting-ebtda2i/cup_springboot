@@ -184,9 +184,9 @@ public class OwnedPlayersService {
                 if (otherPlayer.getNationality().equals(playerToCalculate.getNationality())) {
                     nationCount++;
                 }
-                if (otherPlayer.getNationality().equals("Egypt")) {
-                    nationCount++;
-                }
+                //if (otherPlayer.getNationality().equals("Egypt")) {
+                    //nationCount++;
+                //}
             }
         }
 
