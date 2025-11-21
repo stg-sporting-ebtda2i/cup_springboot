@@ -4,7 +4,7 @@ CREATE OR REPLACE VIEW user_rating AS
 SELECT
     users.id AS user_id,
     ((IFNULL(SUM(players.rating), 0) + users.card_rating) / 11) AS lineup_rating,
-    IFNULL(SUM(owned_players.chemistry + 3), 0) AS total_chemistry
+    IFNULL(SUM(owned_players.chemistry) + 3, 3) AS total_chemistry
 
 FROM
     users
