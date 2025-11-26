@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
+import java.util.Objects;
 
 @Service
 public class AttendanceService {
@@ -44,7 +45,19 @@ public class AttendanceService {
         User user = userService.findOrFail(userId);
         Price price = priceService.getPrice(liturgyName, user.getSchoolYear().getLevel());
         validateAttendance(price, date, user);
+
+        // Remove this spagetti hardcoded trash on finishing this season
+        validateJ2(user, liturgyName);
+
         saveAttendance(liturgyName, date, user);
+    }
+
+    // Remove this spagetti hardcoded trash on finishing this season
+    private void validateJ2(User user, String liturgyName) {
+        if (user.getSchoolYear().getId() != 9
+                && Objects.equals(liturgyName, "Osret El-Alhan (for j2 only)")) {
+            throw new InvalidAttendanceException("Not valid to your school year");
+        }
     }
 
     private void validateAttendance(Price price, Date date, User user) {
