@@ -154,7 +154,7 @@ public class OwnedPlayersService {
     }
 
     private int calculateChemistryForPlayer(Player playerToCalculate, List<Player> allPlayers) {
-        boolean isCalculatingForIcon = "icon".equals(playerToCalculate.getLeague());
+        boolean isCalculatingForIcon = "Icons".equals(playerToCalculate.getLeague()) || "RTBL".equals(playerToCalculate.getLeague());
         if (isCalculatingForIcon) {
             return 3;
         }
@@ -169,7 +169,7 @@ public class OwnedPlayersService {
         for (Player otherPlayer : allPlayers) {
             if (otherPlayer == playerToCalculate)
                 continue;
-            boolean isOtherPlayerIcon = "icon".equals(otherPlayer.getLeague());
+            boolean isOtherPlayerIcon = "Icons".equals(otherPlayer.getLeague()) || "RTBL".equals(otherPlayer.getLeague());
 
             if (isOtherPlayerIcon) {
                 leagueCount++;
