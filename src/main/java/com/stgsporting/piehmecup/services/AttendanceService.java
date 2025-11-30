@@ -2,6 +2,7 @@ package com.stgsporting.piehmecup.services;
 
 import com.stgsporting.piehmecup.authentication.Authenticatable;
 import com.stgsporting.piehmecup.dtos.attendances.AttendanceDTO;
+import com.stgsporting.piehmecup.dtos.attendances.BulkAttendanceDTO;
 import com.stgsporting.piehmecup.entities.*;
 import com.stgsporting.piehmecup.exceptions.*;
 import com.stgsporting.piehmecup.repositories.AttendanceRepository;
@@ -19,6 +20,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -47,13 +50,13 @@ public class AttendanceService {
         validateAttendance(price, date, user);
 
         // Remove this spagetti hardcoded trash on finishing this season
-        validateJ2(user, liturgyName);
+        validateSpagetti(user, liturgyName);
 
-        saveAttendance(liturgyName, date, user);
+        saveAttendance(liturgyName, date, user, false);
     }
 
     // Remove this spagetti hardcoded trash on finishing this season
-    private void validateJ2(User user, String liturgyName) {
+    private void validateSpagetti(User user, String liturgyName) {
         if (user.getSchoolYear().getId() != 9
                 && Objects.equals(liturgyName, "Osret El-Alhan (for j2 only)")) {
             throw new InvalidAttendanceException("Not valid to your school year");
@@ -81,16 +84,16 @@ public class AttendanceService {
 
         Boolean alreadyExists = attendanceRepository.existsAttendancesBetween(user, price, previousSaturday, nextSunday);
 
-        if (alreadyExists) throw new InvalidAttendanceException("You can't attend the same liturgy twice in the same week");
+        if (alreadyExists) throw new DuplicateAttendanceException("You can't attend the same liturgy twice in the same week");
     }
 
-    private void saveAttendance(String liturgyName, Date date, User user) {
+    private void saveAttendance(String liturgyName, Date date, User user, boolean approved) {
         Attendance attendance = new Attendance();
         attendance.setPrice(priceService.getPrice(liturgyName, user.getSchoolYear().getLevel()));
         attendance.setUser(user);
         attendance.setDate(date);
         attendance.setCreatedAt(new Timestamp(System.currentTimeMillis()));
-        attendance.setApproved(false);
+        attendance.setApproved(approved);
         attendanceRepository.save(attendance);
     }
 
@@ -138,6 +141,31 @@ public class AttendanceService {
         }
 
         attendanceRepository.delete(attendance);
+    }
+
+    @Transactional
+    public void addBulkAttendance(BulkAttendanceDTO attendanceDTO) {
+        List<Long> userIds = attendanceDTO.getUserIds();
+        List<String> failedUsers = new ArrayList<>();
+        for (Long userId : userIds) {
+            User user = userService.findOrFail(userId);
+            Price price = priceService.getPrice(attendanceDTO.getLiturgyName(),
+                                                user.getSchoolYear().getLevel());
+            try {
+                validateAttendance(price, attendanceDTO.getDate(), user);
+                
+                // Remove this spagetti hardcoded trash on finishing this season
+                validateSpagetti(user, attendanceDTO.getLiturgyName());
+                
+                saveAttendance(attendanceDTO.getLiturgyName(),
+                            attendanceDTO.getDate(), user, true);
+            } catch (DuplicateAttendanceException ex) {
+                failedUsers.add(user.getUsername());
+            }
+        }
+        if (!failedUsers.isEmpty()) {
+            throw new DuplicateAttendanceException(failedUsers);
+        }
     }
 
     public Page<AttendanceDTO> getUnapprovedAttendances(Pageable pageable, SchoolYear schoolYear) {

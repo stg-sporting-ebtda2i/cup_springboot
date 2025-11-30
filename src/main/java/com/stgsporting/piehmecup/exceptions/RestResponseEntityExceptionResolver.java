@@ -100,6 +100,11 @@ public class RestResponseEntityExceptionResolver extends ResponseEntityException
         return handleExceptionDefault(ex, HttpStatus.BAD_REQUEST, request);
     }
 
+    @ExceptionHandler(value = { DuplicateAttendanceException.class })
+    protected ResponseEntity<Object> handleDuplicateAttendance(DuplicateAttendanceException ex, WebRequest request) {
+        return handleExceptionDefault(ex, HttpStatus.BAD_REQUEST, request);
+    }
+
     private ResponseEntity<Object> handleExceptionDefault(Exception ex, HttpStatus status, WebRequest request) {
         JSONObject response = new JSONObject();
         response.put("message", ex.getMessage());
