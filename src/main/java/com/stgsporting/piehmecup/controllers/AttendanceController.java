@@ -59,7 +59,7 @@ public class AttendanceController {
     }
 
     @PostMapping("ostaz/attendances")
-    public ResponseEntity<Object> addBulkAttendance(@ModelAttribute BulkAttendanceDTO attendanceDTO) {
+    public ResponseEntity<Object> addBulkAttendance(@RequestBody BulkAttendanceDTO attendanceDTO) {
         attendanceService.addBulkAttendance(attendanceDTO);
         return ResponseEntity.ok().body(new HashMap<>(Map.of("message", "Attendances added")));
     }
