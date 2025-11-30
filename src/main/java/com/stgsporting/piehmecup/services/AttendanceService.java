@@ -159,6 +159,7 @@ public class AttendanceService {
                 
                 saveAttendance(attendanceDTO.getLiturgyName(),
                             attendanceDTO.getDate(), user, true);
+                walletService.credit(user, price.getCoins(), "Attended" + price.getName());
             } catch (DuplicateAttendanceException ex) {
                 failedUsers.add(user.getUsername());
             }
