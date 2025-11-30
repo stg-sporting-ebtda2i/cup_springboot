@@ -23,19 +23,21 @@ public class PricesLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        Map<String, Integer> prices = new HashMap<>(Map.of(
-                "Rating Price", 1100,
-                "Madares el Ahad", 1140,
-                "Odas" , 1900,
-                "Odas El-Gom3a", 1900,
-                "Pisagi", 1140,
-                "Tasbeha", 1520
-        ));
+        if (priceRepository.findAll().isEmpty()) {
+            Map<String, Integer> prices = new HashMap<>(Map.of(
+                    "Rating Price", 1100,
+                    "Madares el Ahad", 1140,
+                    "Odas", 1900,
+                    "Odas El-Gom3a", 1900,
+                    "Pisagi", 1140,
+                    "Tasbeha", 1520
+            ));
 
-        levelRepository.findAllOrderById().forEach(level -> prices.forEach((name, price) -> {
-            if(priceRepository.findPricesByNameAndLevel(name, level.getId()).isEmpty()) {
-                priceRepository.save(new Price(name, price, level));
-            }
-        }));
+            levelRepository.findAllOrderById().forEach(level -> prices.forEach((name, price) -> {
+                if (priceRepository.findPricesByNameAndLevel(name, level.getId()).isEmpty()) {
+                    priceRepository.save(new Price(name, price, level));
+                }
+            }));
+        }
     }
 }
