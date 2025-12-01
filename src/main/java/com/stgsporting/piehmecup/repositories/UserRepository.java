@@ -58,7 +58,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
                     SELECT COALESCE(SUM(dt.amount), 0)
                     FROM TRANSACTIONS dt
                     WHERE dt.user = u AND dt.type = 'DEBIT' AND (
-                        dt.description LIKE '%Admin%'
+                        dt.description LIKE '%Admin%' OR
+                        dt.description LIKE '%Quiz%' OR
+                        dt.description LIKE '%deleted%'
                     )
                 )
             ) DESC, u.id ASC
