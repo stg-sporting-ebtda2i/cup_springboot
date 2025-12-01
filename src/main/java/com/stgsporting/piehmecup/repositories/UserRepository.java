@@ -60,7 +60,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                     WHERE dt.user = u AND dt.type = 'DEBIT' AND (
                         dt.description LIKE '%Admin%' OR
                         dt.description LIKE '%Quiz%' OR
-                        dt.desctipion LIKE '%deleted%'
+                        dt.description LIKE '%deleted%'
                     )
                 )
             ) DESC, u.id ASC
