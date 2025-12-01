@@ -1,7 +1,7 @@
 package com.stgsporting.piehmecup.controllers;
 
 import com.stgsporting.piehmecup.dtos.PaginationDTO;
-import com.stgsporting.piehmecup.dtos.attendances.BulkAttendanceDTO;
+import com.stgsporting.piehmecup.dtos.attendances.BulkAttendanceRequestDTO;
 import com.stgsporting.piehmecup.dtos.attendances.RequestAttendanceDTO;
 import com.stgsporting.piehmecup.entities.SchoolYear;
 import com.stgsporting.piehmecup.entities.User;
@@ -59,9 +59,8 @@ public class AttendanceController {
     }
 
     @PostMapping("ostaz/attendances")
-    public ResponseEntity<Object> addBulkAttendance(@RequestBody BulkAttendanceDTO attendanceDTO) {
-        attendanceService.addBulkAttendance(attendanceDTO);
-        return ResponseEntity.ok().body(new HashMap<>(Map.of("message", "Attendances added")));
+    public ResponseEntity<Object> addBulkAttendance(@RequestBody BulkAttendanceRequestDTO attendanceDTO) {
+        return ResponseEntity.ok().body(attendanceService.addBulkAttendance(attendanceDTO));
     }
 
     @PatchMapping("attendance/{liturgyName}")

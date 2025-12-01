@@ -1,13 +1,21 @@
 package com.stgsporting.piehmecup.exceptions;
 
+import com.stgsporting.piehmecup.entities.Attendance;
 import java.util.List;
 
 public class DuplicateAttendanceException extends RuntimeException {
+    private Attendance attendance;
+
     public DuplicateAttendanceException(String message) {
         super(message);
     }
 
-    public DuplicateAttendanceException(List<String> usernames) {
-        super("(DUPLICATE ATTENDANCE) Failed to add attendance for users: " + String.join(", ", usernames));
+    public DuplicateAttendanceException(Attendance attendance) {
+        super("You can't attend the same liturgy twice in the same week");
+        this.attendance = attendance;
+    }
+
+    public Attendance getAttendance() {
+        return attendance;
     }
 }

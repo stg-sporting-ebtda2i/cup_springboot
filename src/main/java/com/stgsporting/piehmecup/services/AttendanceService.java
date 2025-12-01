@@ -2,7 +2,8 @@ package com.stgsporting.piehmecup.services;
 
 import com.stgsporting.piehmecup.authentication.Authenticatable;
 import com.stgsporting.piehmecup.dtos.attendances.AttendanceDTO;
-import com.stgsporting.piehmecup.dtos.attendances.BulkAttendanceDTO;
+import com.stgsporting.piehmecup.dtos.attendances.BulkAttendanceRequestDTO;
+import com.stgsporting.piehmecup.dtos.attendances.BulkAttendanceResponseDTO;
 import com.stgsporting.piehmecup.entities.*;
 import com.stgsporting.piehmecup.exceptions.*;
 import com.stgsporting.piehmecup.repositories.AttendanceRepository;
@@ -23,6 +24,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class AttendanceService {
@@ -82,9 +84,9 @@ public class AttendanceService {
         LocalDate nextSunday = givenDateTime
                 .with(TemporalAdjusters.next(DayOfWeek.SUNDAY)).toLocalDate();
 
-        Boolean alreadyExists = attendanceRepository.existsAttendancesBetween(user, price, previousSaturday, nextSunday);
+        Optional<Attendance> attendance = attendanceRepository.findAttendanceBetween(user, price, previousSaturday, nextSunday);
 
-        if (alreadyExists) throw new DuplicateAttendanceException("You can't attend the same liturgy twice in the same week");
+        if (attendance.isPresent()) throw new DuplicateAttendanceException(attendance.get());
     }
 
     private void saveAttendance(String liturgyName, Date date, User user, boolean approved) {
@@ -144,9 +146,10 @@ public class AttendanceService {
     }
 
     @Transactional
-    public void addBulkAttendance(BulkAttendanceDTO attendanceDTO) {
+    public BulkAttendanceResponseDTO addBulkAttendance(BulkAttendanceRequestDTO attendanceDTO) {
         List<Long> userIds = attendanceDTO.getUserIds();
         List<String> failedUsers = new ArrayList<>();
+        List<String> approvedUsers = new ArrayList<>();
         for (Long userId : userIds) {
             User user = userService.findOrFail(userId);
             Price price = priceService.getPrice(attendanceDTO.getLiturgyName(),
@@ -161,12 +164,18 @@ public class AttendanceService {
                             attendanceDTO.getDate(), user, true);
                 walletService.credit(user, price.getCoins(), "Attended" + price.getName());
             } catch (DuplicateAttendanceException ex) {
-                failedUsers.add(user.getUsername());
+                Attendance attendance = ex.getAttendance();
+                if (attendance.getApproved()) {
+                    failedUsers.add(user.getUsername());
+                } else {
+                    attendance.setApproved(true);
+                    attendanceRepository.save(attendance);
+                    walletService.credit(user, price.getCoins(), "Attended" + price.getName());
+                    approvedUsers.add(user.getUsername());
+                }
             }
         }
-        if (!failedUsers.isEmpty()) {
-            throw new DuplicateAttendanceException(failedUsers);
-        }
+        return new BulkAttendanceResponseDTO(failedUsers, approvedUsers);
     }
 
     public Page<AttendanceDTO> getUnapprovedAttendances(Pageable pageable, SchoolYear schoolYear) {

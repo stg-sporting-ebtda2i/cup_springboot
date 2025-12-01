@@ -8,7 +8,7 @@ import java.util.List;
 
 @Setter
 @Getter
-public class BulkAttendanceDTO {
+public class BulkAttendanceRequestDTO {
     private Date date;
     private String liturgyName;
     private List<Long> userIds;
