@@ -29,4 +29,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     @Query("SELECT count(a) > 0  FROM ATTENDANCE a WHERE a.date >= :startDate AND a.date < :endDate AND a.user = :user AND a.price = :price")
     Boolean existsAttendancesBetween(User user, Price price, LocalDate startDate, LocalDate endDate);
+
+    @Query("SELECT a FROM ATTENDANCE a WHERE a.date >= :startDate AND a.date < :endDate AND a.user = :user AND a.price = :price")
+    Optional<Attendance> findAttendanceBetween(User user, Price price, LocalDate startDate, LocalDate endDate);
 }
