@@ -21,17 +21,14 @@ public class WalletService {
         this.transactionService = transactionService;
     }
 
-    @Transactional
     public void debit(User user, Integer amount) {
         debit(user, amount, null, false);
     }
 
-    @Transactional
     public void debit(User user, Integer amount, String description) {
         debit(user, amount, description, false);
     }
 
-    @Transactional
     public void debit(User user, Integer amount, String description, boolean ignoreCoins) {
         Long userId = user.getId();
         if (userId == null) {
@@ -40,32 +37,34 @@ public class WalletService {
 
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
-            User freshUser = userService.getUserById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-            if (!ignoreCoins && freshUser.getCoins() < amount) {
-                throw new InsufficientCoinsException("Not enough coins");
-            }
-
-            freshUser.setCoins(freshUser.getCoins() - amount);
-
-            userService.save(freshUser);
-
-            transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
+            doDebit(user, userId, amount, description, ignoreCoins);
         }
     }
 
     @Transactional
+    protected void doDebit(User user, Long userId, Integer amount, String description, boolean ignoreCoins) {
+        User freshUser = userService.getUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!ignoreCoins && freshUser.getCoins() < amount) {
+            throw new InsufficientCoinsException("Not enough coins");
+        }
+
+        freshUser.setCoins(freshUser.getCoins() - amount);
+
+        userService.save(freshUser);
+
+        transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
+    }
+
     public void forceDebit(User user, Integer amount, String description) {
         debit(user, amount, description, true);
     }
 
-    @Transactional
     public void credit(User user, Integer amount) {
         credit(user, amount, null);
     }
 
-    @Transactional
     public void credit(User user, Integer amount, String description) {
         Long userId = user.getId();
         if (userId == null) {
@@ -74,14 +73,19 @@ public class WalletService {
 
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
-            User freshUser = userService.getUserById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-            freshUser.setCoins(freshUser.getCoins() + amount);
-
-            userService.save(freshUser);
-
-            transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
+            doCredit(user, userId, amount, description);
         }
+    }
+
+    @Transactional
+    protected void doCredit(User user, Long userId, Integer amount, String description) {
+        User freshUser = userService.getUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        freshUser.setCoins(freshUser.getCoins() + amount);
+
+        userService.save(freshUser);
+
+        transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
     }
 }
