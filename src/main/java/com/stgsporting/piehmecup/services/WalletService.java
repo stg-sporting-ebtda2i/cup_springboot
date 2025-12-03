@@ -40,11 +40,12 @@ public class WalletService {
 
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
-            try {
-                if (!ignoreCoins && user.getCoins() < amount) {
-                    throw new InsufficientCoinsException("Not enough coins");
-                }
+            if (!ignoreCoins && user.getCoins() < amount) {
+                userLocks.remove(userId, lock);
+                throw new InsufficientCoinsException("Not enough coins");
+            }
 
+            try {
                 user.setCoins(user.getCoins() - amount);
 
                 userService.save(user);
