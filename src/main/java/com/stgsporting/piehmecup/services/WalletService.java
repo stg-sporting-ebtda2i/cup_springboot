@@ -6,11 +6,15 @@ import com.stgsporting.piehmecup.exceptions.InsufficientCoinsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Service
 public class WalletService {
 
     private final UserService userService;
     private final TransactionService transactionService;
+    private final Map<Long, Object> userLocks = new ConcurrentHashMap<>();
 
     public WalletService(UserService userService, TransactionService transactionService) {
         this.userService = userService;
@@ -29,15 +33,27 @@ public class WalletService {
 
     @Transactional
     public void debit(User user, Integer amount, String description, boolean ignoreCoins) {
-        if (!ignoreCoins && user.getCoins() < amount) {
-            throw new InsufficientCoinsException("Not enough coins");
+        Long userId = user.getId();
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
-        user.setCoins(user.getCoins() - amount);
+        Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
+        synchronized (lock) {
+            try {
+                if (!ignoreCoins && user.getCoins() < amount) {
+                    throw new InsufficientCoinsException("Not enough coins");
+                }
 
-        userService.save(user);
+                user.setCoins(user.getCoins() - amount);
 
-        transactionService.makeTransaction(user, amount, TransactionType.DEBIT, description);
+                userService.save(user);
+
+                transactionService.makeTransaction(user, amount, TransactionType.DEBIT, description);
+            } finally {
+                userLocks.remove(userId, lock);
+            }
+        }
     }
 
     @Transactional
@@ -52,10 +68,22 @@ public class WalletService {
 
     @Transactional
     public void credit(User user, Integer amount, String description) {
-        user.setCoins(user.getCoins() + amount);
+        Long userId = user.getId();
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID must not be null for wallet operations");
+        }
 
-        userService.save(user);
+        Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
+        synchronized (lock) {
+            try {
+                user.setCoins(user.getCoins() + amount);
 
-        transactionService.makeTransaction(user, amount, TransactionType.CREDIT, description);
+                userService.save(user);
+
+                transactionService.makeTransaction(user, amount, TransactionType.CREDIT, description);
+            } finally {
+                userLocks.remove(userId, lock);
+            }
+        }
     }
 }
