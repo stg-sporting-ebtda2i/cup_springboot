@@ -44,19 +44,14 @@ public class WalletService {
                     .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
             if (!ignoreCoins && freshUser.getCoins() < amount) {
-                userLocks.remove(userId, lock);
                 throw new InsufficientCoinsException("Not enough coins");
             }
 
-            try {
-                freshUser.setCoins(freshUser.getCoins() - amount);
+            freshUser.setCoins(freshUser.getCoins() - amount);
 
-                userService.save(freshUser);
+            userService.save(freshUser);
 
-                transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
-            } finally {
-                userLocks.remove(userId, lock);
-            }
+            transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
         }
     }
 
@@ -79,18 +74,14 @@ public class WalletService {
 
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
-            try {
-                User freshUser = userService.getUserById(userId)
-                        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            User freshUser = userService.getUserById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-                freshUser.setCoins(freshUser.getCoins() + amount);
+            freshUser.setCoins(freshUser.getCoins() + amount);
 
-                userService.save(freshUser);
+            userService.save(freshUser);
 
-                transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
-            } finally {
-                userLocks.remove(userId, lock);
-            }
+            transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
         }
     }
 }
