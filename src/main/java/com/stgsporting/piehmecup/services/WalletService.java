@@ -40,17 +40,20 @@ public class WalletService {
 
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
-            if (!ignoreCoins && user.getCoins() < amount) {
+            User freshUser = userService.getUserById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+            if (!ignoreCoins && freshUser.getCoins() < amount) {
                 userLocks.remove(userId, lock);
                 throw new InsufficientCoinsException("Not enough coins");
             }
 
             try {
-                user.setCoins(user.getCoins() - amount);
+                freshUser.setCoins(freshUser.getCoins() - amount);
 
-                userService.save(user);
+                userService.save(freshUser);
 
-                transactionService.makeTransaction(user, amount, TransactionType.DEBIT, description);
+                transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
             } finally {
                 userLocks.remove(userId, lock);
             }
@@ -77,11 +80,14 @@ public class WalletService {
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
             try {
-                user.setCoins(user.getCoins() + amount);
+                User freshUser = userService.getUserById(userId)
+                        .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-                userService.save(user);
+                freshUser.setCoins(freshUser.getCoins() + amount);
 
-                transactionService.makeTransaction(user, amount, TransactionType.CREDIT, description);
+                userService.save(freshUser);
+
+                transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
             } finally {
                 userLocks.remove(userId, lock);
             }
