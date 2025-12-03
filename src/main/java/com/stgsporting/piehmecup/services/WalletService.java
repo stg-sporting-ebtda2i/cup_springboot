@@ -4,7 +4,7 @@ import com.stgsporting.piehmecup.entities.User;
 import com.stgsporting.piehmecup.enums.TransactionType;
 import com.stgsporting.piehmecup.exceptions.InsufficientCoinsException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,11 +14,13 @@ public class WalletService {
 
     private final UserService userService;
     private final TransactionService transactionService;
+    private final TransactionTemplate transactionTemplate;
     private final Map<Long, Object> userLocks = new ConcurrentHashMap<>();
 
-    public WalletService(UserService userService, TransactionService transactionService) {
+    public WalletService(UserService userService, TransactionService transactionService, TransactionTemplate transactionTemplate) {
         this.userService = userService;
         this.transactionService = transactionService;
+        this.transactionTemplate = transactionTemplate;
     }
 
     public void debit(User user, Integer amount) {
@@ -37,24 +39,21 @@ public class WalletService {
 
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
-            doDebit(user, userId, amount, description, ignoreCoins);
+            transactionTemplate.executeWithoutResult(status -> {
+                User freshUser = userService.getUserById(userId)
+                        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+                if (!ignoreCoins && freshUser.getCoins() < amount) {
+                    throw new InsufficientCoinsException("Not enough coins");
+                }
+
+                freshUser.setCoins(freshUser.getCoins() - amount);
+
+                userService.save(freshUser);
+
+                transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
+            });
         }
-    }
-
-    @Transactional
-    protected void doDebit(User user, Long userId, Integer amount, String description, boolean ignoreCoins) {
-        User freshUser = userService.getUserById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        if (!ignoreCoins && freshUser.getCoins() < amount) {
-            throw new InsufficientCoinsException("Not enough coins");
-        }
-
-        freshUser.setCoins(freshUser.getCoins() - amount);
-
-        userService.save(freshUser);
-
-        transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
     }
 
     public void forceDebit(User user, Integer amount, String description) {
@@ -73,19 +72,16 @@ public class WalletService {
 
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
-            doCredit(user, userId, amount, description);
+            transactionTemplate.executeWithoutResult(status -> {
+                User freshUser = userService.getUserById(userId)
+                        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+                freshUser.setCoins(freshUser.getCoins() + amount);
+
+                userService.save(freshUser);
+
+                transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
+            });
         }
-    }
-
-    @Transactional
-    protected void doCredit(User user, Long userId, Integer amount, String description) {
-        User freshUser = userService.getUserById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        freshUser.setCoins(freshUser.getCoins() + amount);
-
-        userService.save(freshUser);
-
-        transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
     }
 }
