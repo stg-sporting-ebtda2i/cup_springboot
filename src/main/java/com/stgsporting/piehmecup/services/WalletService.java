@@ -40,7 +40,7 @@ public class WalletService {
 
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
-            User freshUser = userService.getUserById(userId)
+            User freshUser = userService.getUserByIdWithLock(userId)
                     .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
             if (!ignoreCoins && freshUser.getCoins() < amount) {
@@ -80,7 +80,7 @@ public class WalletService {
         Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
         synchronized (lock) {
             try {
-                User freshUser = userService.getUserById(userId)
+                User freshUser = userService.getUserByIdWithLock(userId)
                         .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
                 freshUser.setCoins(freshUser.getCoins() + amount);

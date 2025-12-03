@@ -1,9 +1,11 @@
 package com.stgsporting.piehmecup.repositories;
 
 import com.stgsporting.piehmecup.entities.*;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,6 +14,10 @@ import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findUserById(long id);
+    
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> findByIdWithLock(@Param("id") Long id);
     Optional<User> findUsersByUsername(String username);
 
     @Query("SELECT u FROM User u WHERE u.username in :usernames")

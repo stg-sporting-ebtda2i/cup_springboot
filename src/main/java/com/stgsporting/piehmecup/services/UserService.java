@@ -97,6 +97,10 @@ public class UserService implements AuthenticatableService {
         return userRepository.findById(id);
     }
 
+    public Optional<User> getUserByIdWithLock(Long id) {
+        return userRepository.findByIdWithLock(id);
+    }
+
     public User findOrFail(long id) {
         return userRepository.findById(id).orElseThrow(UserNotFoundException::new);
     }
