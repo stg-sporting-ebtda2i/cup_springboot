@@ -5,6 +5,8 @@ import com.stgsporting.piehmecup.entities.SchoolYear;
 import com.stgsporting.piehmecup.entities.User;
 import com.stgsporting.piehmecup.exceptions.MinRatingException;
 import com.stgsporting.piehmecup.repositories.UserRepository;
+
+import org.springframework.security.access.method.P;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -40,8 +42,12 @@ public class CardRatingService {
         if (user.getCardRating() + delta < MIN_RATING)
             throw new MinRatingException("Rating cannot be negative");
 
-        walletService.debit(user, deltaPrice * delta, "Rating changed by " + delta);
-
+        if (delta < 0) {
+            walletService.credit(user, deltaPrice * delta * -1, "Rating changed by " + delta);
+        } else {
+            walletService.debit(user, deltaPrice * delta, "Rating changed by " + delta);
+        }
+        
         user.setCardRating(user.getCardRating() + delta);
 
         userService.save(user);
