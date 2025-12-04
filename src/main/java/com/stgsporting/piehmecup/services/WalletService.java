@@ -57,7 +57,6 @@ public class WalletService {
             transactionService.makeTransaction(user, amount, TransactionType.DEBIT, description);
         } finally {
             lock.unlock();
-            userLocks.remove(userId, lock);
         }
     }
 
@@ -91,7 +90,6 @@ public class WalletService {
             transactionService.makeTransaction(user, amount, TransactionType.CREDIT, description);
         } finally {
             lock.unlock();
-            userLocks.remove(userId, lock);
         }
     }
 }
