@@ -46,15 +46,19 @@ public class WalletService {
         }
 
         try {
-            if (!ignoreCoins && user.getCoins() < amount) {
+            User freshUser = userService.getUserById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
+            
+            if (!ignoreCoins && freshUser.getCoins() < amount) {
                 throw new InsufficientCoinsException("Not enough coins");
             }
 
-            user.setCoins(user.getCoins() - amount);
+            freshUser.setCoins(freshUser.getCoins() - amount);
+            user.setCoins(freshUser.getCoins());
 
-            userService.save(user);
+            userService.save(freshUser);
 
-            transactionService.makeTransaction(user, amount, TransactionType.DEBIT, description);
+            transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
         } finally {
             lock.unlock();
         }
@@ -83,11 +87,15 @@ public class WalletService {
         }
 
         try {
-            user.setCoins(user.getCoins() + amount);
+            User freshUser = userService.getUserById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
+            
+            freshUser.setCoins(freshUser.getCoins() + amount);
+            user.setCoins(freshUser.getCoins());
 
-            userService.save(user);
+            userService.save(freshUser);
 
-            transactionService.makeTransaction(user, amount, TransactionType.CREDIT, description);
+            transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
         } finally {
             lock.unlock();
         }
