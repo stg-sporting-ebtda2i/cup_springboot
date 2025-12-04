@@ -3,23 +3,20 @@ package com.stgsporting.piehmecup.services;
 import com.stgsporting.piehmecup.entities.User;
 import com.stgsporting.piehmecup.enums.TransactionType;
 import com.stgsporting.piehmecup.exceptions.InsufficientCoinsException;
+import com.stgsporting.piehmecup.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class WalletService {
 
     private final UserService userService;
+    private final UserRepository userRepository;
     private final TransactionService transactionService;
-    private final Map<Long, Lock> userLocks = new ConcurrentHashMap<>();
 
-    public WalletService(UserService userService, TransactionService transactionService) {
+    public WalletService(UserService userService, UserRepository userRepository, TransactionService transactionService) {
         this.userService = userService;
+        this.userRepository = userRepository;
         this.transactionService = transactionService;
     }
 
@@ -40,28 +37,20 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
-        Lock lock = userLocks.computeIfAbsent(userId, id -> new ReentrantLock());
-        if (!lock.tryLock()) {
-            throw new IllegalStateException("Unable to acquire lock for user " + userId + ". Another transaction is in progress.");
+        // Use database pessimistic lock to prevent concurrent modifications
+        User freshUser = userRepository.findUserByIdWithLock(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
+        
+        if (!ignoreCoins && freshUser.getCoins() < amount) {
+            throw new InsufficientCoinsException("Not enough coins");
         }
 
-        try {
-            User freshUser = userService.getUserById(userId)
-                .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
-            
-            if (!ignoreCoins && freshUser.getCoins() < amount) {
-                throw new InsufficientCoinsException("Not enough coins");
-            }
+        freshUser.setCoins(freshUser.getCoins() - amount);
+        user.setCoins(freshUser.getCoins());
 
-            freshUser.setCoins(freshUser.getCoins() - amount);
-            user.setCoins(freshUser.getCoins());
+        userService.save(freshUser);
 
-            userService.save(freshUser);
-
-            transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
-        } finally {
-            lock.unlock();
-        }
+        transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
     }
 
     @Transactional
@@ -81,23 +70,15 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
-        Lock lock = userLocks.computeIfAbsent(userId, id -> new ReentrantLock());
-        if (!lock.tryLock()) {
-            throw new IllegalStateException("Unable to acquire lock for user " + userId + ". Another transaction is in progress.");
-        }
+        // Use database pessimistic lock to prevent concurrent modifications
+        User freshUser = userRepository.findUserByIdWithLock(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
+        
+        freshUser.setCoins(freshUser.getCoins() + amount);
+        user.setCoins(freshUser.getCoins());
 
-        try {
-            User freshUser = userService.getUserById(userId)
-                .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
-            
-            freshUser.setCoins(freshUser.getCoins() + amount);
-            user.setCoins(freshUser.getCoins());
+        userService.save(freshUser);
 
-            userService.save(freshUser);
-
-            transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
-        } finally {
-            lock.unlock();
-        }
+        transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
     }
 }
