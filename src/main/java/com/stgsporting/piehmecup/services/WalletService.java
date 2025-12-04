@@ -8,13 +8,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class WalletService {
 
     private final UserService userService;
     private final TransactionService transactionService;
-    private final Map<Long, Object> userLocks = new ConcurrentHashMap<>();
+    private final Map<Long, Lock> userLocks = new ConcurrentHashMap<>();
 
     public WalletService(UserService userService, TransactionService transactionService) {
         this.userService = userService;
@@ -38,22 +40,24 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
-        Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
-        synchronized (lock) {
+        Lock lock = userLocks.computeIfAbsent(userId, id -> new ReentrantLock());
+        if (!lock.tryLock()) {
+            throw new IllegalStateException("Unable to acquire lock for user " + userId + ". Another transaction is in progress.");
+        }
+
+        try {
             if (!ignoreCoins && user.getCoins() < amount) {
-                userLocks.remove(userId, lock);
                 throw new InsufficientCoinsException("Not enough coins");
             }
 
-            try {
-                user.setCoins(user.getCoins() - amount);
+            user.setCoins(user.getCoins() - amount);
 
-                userService.save(user);
+            userService.save(user);
 
-                transactionService.makeTransaction(user, amount, TransactionType.DEBIT, description);
-            } finally {
-                userLocks.remove(userId, lock);
-            }
+            transactionService.makeTransaction(user, amount, TransactionType.DEBIT, description);
+        } finally {
+            lock.unlock();
+            userLocks.remove(userId, lock);
         }
     }
 
@@ -74,17 +78,20 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
-        Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
-        synchronized (lock) {
-            try {
-                user.setCoins(user.getCoins() + amount);
+        Lock lock = userLocks.computeIfAbsent(userId, id -> new ReentrantLock());
+        if (!lock.tryLock()) {
+            throw new IllegalStateException("Unable to acquire lock for user " + userId + ". Another transaction is in progress.");
+        }
 
-                userService.save(user);
+        try {
+            user.setCoins(user.getCoins() + amount);
 
-                transactionService.makeTransaction(user, amount, TransactionType.CREDIT, description);
-            } finally {
-                userLocks.remove(userId, lock);
-            }
+            userService.save(user);
+
+            transactionService.makeTransaction(user, amount, TransactionType.CREDIT, description);
+        } finally {
+            lock.unlock();
+            userLocks.remove(userId, lock);
         }
     }
 }
