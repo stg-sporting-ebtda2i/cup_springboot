@@ -37,15 +37,21 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
-        // Use database pessimistic lock to prevent concurrent modifications
-        User freshUser = userRepository.findUserByIdWithLock(userId)
-            .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
-        
-        if (!ignoreCoins && freshUser.getCoins() < amount) {
+        int updatedRows = ignoreCoins
+            ? userRepository.forceDebitCoins(userId, amount)
+            : userRepository.debitCoinsIfEnough(userId, amount);
+
+        if (!ignoreCoins && updatedRows == 0) {
             throw new InsufficientCoinsException("Not enough coins");
         }
 
-        freshUser.setCoins(freshUser.getCoins() - amount);
+        if (updatedRows == 0) {
+            throw new IllegalStateException("User not found: " + userId);
+        }
+
+        User freshUser = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
+
         user.setCoins(freshUser.getCoins());
 
         userService.save(freshUser);
@@ -70,11 +76,14 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
-        // Use database pessimistic lock to prevent concurrent modifications
-        User freshUser = userRepository.findUserByIdWithLock(userId)
+        int updatedRows = userRepository.creditCoins(userId, amount);
+        if (updatedRows == 0) {
+            throw new IllegalStateException("User not found: " + userId);
+        }
+
+        User freshUser = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
-        
-        freshUser.setCoins(freshUser.getCoins() + amount);
+
         user.setCoins(freshUser.getCoins());
 
         userService.save(freshUser);
