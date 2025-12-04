@@ -3,21 +3,20 @@ package com.stgsporting.piehmecup.services;
 import com.stgsporting.piehmecup.entities.User;
 import com.stgsporting.piehmecup.enums.TransactionType;
 import com.stgsporting.piehmecup.exceptions.InsufficientCoinsException;
+import com.stgsporting.piehmecup.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class WalletService {
 
     private final UserService userService;
+    private final UserRepository userRepository;
     private final TransactionService transactionService;
-    private final Map<Long, Object> userLocks = new ConcurrentHashMap<>();
 
-    public WalletService(UserService userService, TransactionService transactionService) {
+    public WalletService(UserService userService, UserRepository userRepository, TransactionService transactionService) {
         this.userService = userService;
+        this.userRepository = userRepository;
         this.transactionService = transactionService;
     }
 
@@ -38,23 +37,28 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
-        Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
-        synchronized (lock) {
-            if (!ignoreCoins && user.getCoins() < amount) {
-                userLocks.remove(userId, lock);
-                throw new InsufficientCoinsException("Not enough coins");
-            }
+        ensurePositiveAmount(amount);
 
-            try {
-                user.setCoins(user.getCoins() - amount);
+        int updatedRows = ignoreCoins
+            ? userRepository.forceDebitCoins(userId, amount)
+            : userRepository.debitCoinsIfEnough(userId, amount);
 
-                userService.save(user);
-
-                transactionService.makeTransaction(user, amount, TransactionType.DEBIT, description);
-            } finally {
-                userLocks.remove(userId, lock);
-            }
+        if (!ignoreCoins && updatedRows == 0) {
+            throw new InsufficientCoinsException("Not enough coins");
         }
+
+        if (updatedRows == 0) {
+            throw new IllegalStateException("User not found: " + userId);
+        }
+
+        User freshUser = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
+
+        user.setCoins(freshUser.getCoins());
+
+        userService.save(freshUser);
+
+        transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
     }
 
     @Transactional
@@ -74,17 +78,26 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
-        Object lock = userLocks.computeIfAbsent(userId, id -> new Object());
-        synchronized (lock) {
-            try {
-                user.setCoins(user.getCoins() + amount);
+        ensurePositiveAmount(amount);
 
-                userService.save(user);
+        int updatedRows = userRepository.creditCoins(userId, amount);
+        if (updatedRows == 0) {
+            throw new IllegalStateException("User not found: " + userId);
+        }
 
-                transactionService.makeTransaction(user, amount, TransactionType.CREDIT, description);
-            } finally {
-                userLocks.remove(userId, lock);
-            }
+        User freshUser = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
+
+        user.setCoins(freshUser.getCoins());
+
+        userService.save(freshUser);
+
+        transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
+    }
+
+    private void ensurePositiveAmount(Integer amount) {
+        if (amount == null || amount <= 0) {
+            throw new IllegalArgumentException("Amount must be a positive value");
         }
     }
 }

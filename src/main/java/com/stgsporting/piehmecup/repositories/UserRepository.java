@@ -1,9 +1,12 @@
 package com.stgsporting.piehmecup.repositories;
 
 import com.stgsporting.piehmecup.entities.*;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,6 +15,22 @@ import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findUserById(long id);
+    
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> findUserByIdWithLock(@Param("id") Long id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE User u SET u.coins = u.coins - :amount WHERE u.id = :id AND u.coins >= :amount")
+    int debitCoinsIfEnough(@Param("id") Long id, @Param("amount") Integer amount);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE User u SET u.coins = u.coins - :amount WHERE u.id = :id")
+    int forceDebitCoins(@Param("id") Long id, @Param("amount") Integer amount);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE User u SET u.coins = u.coins + :amount WHERE u.id = :id")
+    int creditCoins(@Param("id") Long id, @Param("amount") Integer amount);
     Optional<User> findUsersByUsername(String username);
 
     @Query("SELECT u FROM User u WHERE u.username in :usernames")
