@@ -37,6 +37,8 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
+        ensurePositiveAmount(amount);
+
         int updatedRows = ignoreCoins
             ? userRepository.forceDebitCoins(userId, amount)
             : userRepository.debitCoinsIfEnough(userId, amount);
@@ -76,6 +78,8 @@ public class WalletService {
             throw new IllegalArgumentException("User ID must not be null for wallet operations");
         }
 
+        ensurePositiveAmount(amount);
+
         int updatedRows = userRepository.creditCoins(userId, amount);
         if (updatedRows == 0) {
             throw new IllegalStateException("User not found: " + userId);
@@ -89,5 +93,11 @@ public class WalletService {
         userService.save(freshUser);
 
         transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
+    }
+
+    private void ensurePositiveAmount(Integer amount) {
+        if (amount == null || amount <= 0) {
+            throw new IllegalArgumentException("Amount must be a positive value");
+        }
     }
 }

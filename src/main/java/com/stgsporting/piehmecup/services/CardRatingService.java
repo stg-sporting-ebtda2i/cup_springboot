@@ -5,9 +5,8 @@ import com.stgsporting.piehmecup.entities.SchoolYear;
 import com.stgsporting.piehmecup.entities.User;
 import com.stgsporting.piehmecup.exceptions.MinRatingException;
 import com.stgsporting.piehmecup.repositories.UserRepository;
-
-import org.springframework.security.access.method.P;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CardRatingService {
@@ -33,19 +32,27 @@ public class CardRatingService {
         return user.getCardRating();
     }
 
+    @Transactional
     public void updateRating(Integer delta) {
+        if (delta == null || delta == 0) {
+            return;
+        }
+
         long id = userService.getAuthenticatableId();
-        User user = userService.getAuthenticatableById(id);
+        User user = userRepository.findUserByIdWithLock(id)
+                .orElseThrow(() -> new IllegalStateException("User not found: " + id));
 
         Integer deltaPrice = priceService.getPrice("Rating Price", user.getSchoolYear().getLevel()).getCoins();
 
         if (user.getCardRating() + delta < MIN_RATING)
             throw new MinRatingException("Rating cannot be negative");
 
+        int amount = deltaPrice * Math.abs(delta);
+
         if (delta < 0) {
-            walletService.credit(user, deltaPrice * delta * -1, "Rating changed by " + delta);
+            walletService.credit(user, amount, "Rating changed by " + delta);
         } else {
-            walletService.debit(user, deltaPrice * delta, "Rating changed by " + delta);
+            walletService.debit(user, amount, "Rating changed by " + delta);
         }
         
         user.setCardRating(user.getCardRating() + delta);
