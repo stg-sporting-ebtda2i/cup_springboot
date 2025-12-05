@@ -39,6 +39,7 @@ public class SecurityConfig {
                         .requestMatchers("/schoolYears").permitAll()
                         .requestMatchers("/admin/login").permitAll()
                         .requestMatchers("/insights/**").permitAll()
+                        .requestMatchers("/flag").permitAll()
                         .requestMatchers("/admin/**").hasAuthority(Role.ADMIN.name())
                         .requestMatchers("/ostaz/**").hasAnyAuthority(Role.OSTAZ.name(), Role.ADMIN.name())
                         .anyRequest().authenticated()
