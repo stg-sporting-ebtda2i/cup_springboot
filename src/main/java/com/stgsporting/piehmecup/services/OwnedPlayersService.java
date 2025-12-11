@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -167,8 +168,9 @@ public class OwnedPlayersService {
             nationCount++;
         }
         for (Player otherPlayer : allPlayers) {
-            if (otherPlayer == playerToCalculate)
+            if (Objects.equals(otherPlayer.getId(), playerToCalculate.getId())) {
                 continue;
+            }
             boolean isOtherPlayerIcon = "Icons".equals(otherPlayer.getLeague()) || "RTBL".equals(otherPlayer.getLeague());
 
             if (isOtherPlayerIcon) {
