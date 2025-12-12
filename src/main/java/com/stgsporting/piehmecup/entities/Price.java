@@ -30,4 +30,7 @@ public class Price extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = DatabaseEnum.levelId, nullable = false)
     private Level level;
+
+    @Column(name = DatabaseEnum.visible, nullable = false)
+    private boolean visible;
 }
