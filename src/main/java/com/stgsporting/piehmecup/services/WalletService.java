@@ -96,7 +96,7 @@ public class WalletService {
     }
 
     private void ensurePositiveAmount(Integer amount) {
-        if (amount == null || amount <= 0) {
+        if (amount == null || amount < 0) {
             throw new IllegalArgumentException("Amount must be a positive value");
         }
     }
