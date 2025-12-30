@@ -1,5 +1,6 @@
 package com.stgsporting.piehmecup.repositories;
 
+import com.stgsporting.piehmecup.dtos.users.UserCoinsDTO;
 import com.stgsporting.piehmecup.entities.*;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -60,7 +61,28 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findUsersBySchoolYearPaginated(SchoolYear schoolYear, String search, Pageable pageable);
 
     @Query("""
-            SELECT u FROM User u
+            SELECT new com.stgsporting.piehmecup.dtos.users.UserCoinsDTO(
+                u,
+                (
+                    SELECT COALESCE(SUM(ct.amount), 0)
+                    FROM TRANSACTIONS ct
+                    WHERE ct.user = u AND ct.type = 'CREDIT' AND (
+                        ct.description LIKE '%Admin%' OR
+                        ct.description LIKE '%Attended%' OR
+                        ct.description LIKE '%Question%' OR
+                        ct.description LIKE '%Quiz%'
+                    )
+                ) - (
+                    SELECT COALESCE(SUM(dt.amount), 0)
+                    FROM TRANSACTIONS dt
+                    WHERE dt.user = u AND dt.type = 'DEBIT' AND (
+                        dt.description LIKE '%Admin%' OR
+                        dt.description LIKE '%Quiz%' OR
+                        dt.description LIKE '%deleted%'
+                    )
+                )
+            )
+            FROM User u
             WHERE u.schoolYear = :schoolYear and u.username
             LIKE :search
             ORDER BY (
@@ -84,7 +106,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                 )
             ) DESC, u.id ASC
             """)
-    Page<User> findUsersBySchoolYearPaginatedAndCoins(SchoolYear schoolYear, String search, Pageable pageable);
+    Page<UserCoinsDTO> findUsersBySchoolYearPaginatedAndCoins(SchoolYear schoolYear, String search, Pageable pageable);
 
     List<User> findAllBySchoolYear(SchoolYear schoolYear);
 }

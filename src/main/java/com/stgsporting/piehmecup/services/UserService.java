@@ -5,6 +5,7 @@ import com.stgsporting.piehmecup.authentication.Authenticatable;
 import com.stgsporting.piehmecup.dtos.users.LeaderboardCoinsDTO;
 import com.stgsporting.piehmecup.dtos.users.LeaderboardDTO;
 import com.stgsporting.piehmecup.dtos.UserRegisterDTO;
+import com.stgsporting.piehmecup.dtos.users.UserCoinsDTO;
 import com.stgsporting.piehmecup.dtos.users.UserInLeaderboardDTO;
 import com.stgsporting.piehmecup.entities.*;
 import com.stgsporting.piehmecup.exceptions.*;
@@ -226,7 +227,7 @@ public class UserService implements AuthenticatableService {
         return userRepository.findUsersBySchoolYearPaginated(schoolYear,search + "%", page);
     }
 
-    public Page<User> getUsersBySchoolYearAndCoins(SchoolYear schoolYear, String search, Pageable page) {
+    public Page<UserCoinsDTO> getUsersBySchoolYearAndCoins(SchoolYear schoolYear, String search, Pageable page) {
         if(search == null) search = "";
 
         return userRepository.findUsersBySchoolYearPaginatedAndCoins(schoolYear,search + "%", page);

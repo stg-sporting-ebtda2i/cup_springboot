@@ -61,7 +61,7 @@ public class UserController {
 
         Page<UserInListDTO> users = userService
                 .getUsersBySchoolYear(admin.getSchoolYear(), search, pageable)
-                .map((user) -> new UserInListDTO(user, fileService));
+                .map((user) -> new UserInListDTO(user, fileService, 0));
 
         return ResponseEntity.ok(new PaginationDTO<>(users));
     }
@@ -74,7 +74,7 @@ public class UserController {
 
         Page<UserInListDTO> users = userService
                 .getUsersBySchoolYearAndCoins(admin.getSchoolYear(), search, pageable)
-                .map((user) -> new UserInListDTO(user, fileService));
+                .map((userCoinsDTO) -> new UserInListDTO(userCoinsDTO.getUser(), fileService, userCoinsDTO.getCoins().intValue()));
 
         return ResponseEntity.ok(new PaginationDTO<>(users));
     }

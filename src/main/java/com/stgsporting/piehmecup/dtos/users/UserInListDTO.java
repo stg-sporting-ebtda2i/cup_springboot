@@ -20,8 +20,9 @@ public class UserInListDTO {
     private Integer chemistry;
     private String selectedIcon;
     private Boolean confirmed;
+    private Integer totalCoinsEarned;
 
-    public UserInListDTO(User user, FileService fileService) {
+    public UserInListDTO(User user, FileService fileService, Integer totalCoinsEarned) {
         this.id = user.getId();
         this.username = user.getUsername();
         this.coins = user.getCoins();
@@ -35,5 +36,7 @@ public class UserInListDTO {
         this.imageUrl = fileService.generateSignedUrl(user.getImgLink());
 
         this.selectedIcon = selectedIcon != null ? selectedIcon.getImgLink() : null;
+
+        this.totalCoinsEarned = totalCoinsEarned;
     }
 }
