@@ -40,11 +40,16 @@ jobs:
         run: |
           scp -i ~/.ssh/deploy_key src/main/resources/application.properties ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/application.properties
 
+      - name: Upload user_rating_view.sql
+        run: |
+          scp -i ~/.ssh/deploy_key user_rating_view.sql ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/user_rating_view.sql
+
       - name: Move files and start service
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
             sudo mv ~/app.jar /var/www/cup/app.jar
             sudo mv ~/application.properties /var/www/cup/application.properties
+            sudo mv ~/user_rating_view.sql /var/www/cup/user_rating_view.sql
             sudo chown -R webapp:webapp /var/www/cup
             sudo systemctl start cup
           "
