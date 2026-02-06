@@ -2,8 +2,10 @@ package com.stgsporting.piehmecup.services;
 
 
 import com.stgsporting.piehmecup.authentication.Authenticatable;
+import com.stgsporting.piehmecup.dtos.users.LeaderboardCoinsDTO;
 import com.stgsporting.piehmecup.dtos.users.LeaderboardDTO;
 import com.stgsporting.piehmecup.dtos.UserRegisterDTO;
+import com.stgsporting.piehmecup.dtos.users.UserCoinsDTO;
 import com.stgsporting.piehmecup.dtos.users.UserInLeaderboardDTO;
 import com.stgsporting.piehmecup.entities.*;
 import com.stgsporting.piehmecup.exceptions.*;
@@ -203,7 +205,6 @@ public class UserService implements AuthenticatableService {
         user.setCardRating(50);
         user.setLeaderboardBoolean(true);
         user.setImgLink(userRegisterDTO.getImgLink());
-
         user.setSelectedPosition(defaultPos);
         user.setSelectedIcon(defaultIcon);
         user.addIcon(defaultIcon);
@@ -226,16 +227,23 @@ public class UserService implements AuthenticatableService {
         return userRepository.findUsersBySchoolYearPaginated(schoolYear,search + "%", page);
     }
 
+    public Page<UserCoinsDTO> getUsersBySchoolYearAndCoins(SchoolYear schoolYear, String search, Pageable page) {
+        if(search == null) search = "";
+
+        return userRepository.findUsersBySchoolYearPaginatedAndCoins(schoolYear,search + "%", page);
+    }
+
     public LeaderboardDTO getLeaderboard() {
+        SchoolYear schoolYear = getSchoolYear();
+        List<User> users = userRepository.findUsersBySchoolYear(schoolYear);
+        return getLeaderboardDTO(users);
+    }
+
+    private SchoolYear getSchoolYear() {
         Long userId = getAuthenticatableId();
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         Long schoolYearId = user.getSchoolYear().getId();
-        SchoolYear schoolYear = schoolYearRepository.findSchoolYearById(schoolYearId).orElseThrow(SchoolYearNotFound::new);
-
-        List<User> users = userRepository.findUsersBySchoolYear(schoolYear);
-//        List<User> users = userRepository.findUsersBySchoolYear(schoolYear);
-
-        return getLeaderboardDTO(users);
+        return schoolYearRepository.findSchoolYearById(schoolYearId).orElseThrow(SchoolYearNotFound::new);
     }
 
     @NotNull
@@ -268,6 +276,7 @@ public class UserService implements AuthenticatableService {
             dto.setIconUrl(fileService.generateSignedUrl(u.getSelectedIcon().getImgLink()));
 
             dto.setCardRating(u.getCardRating());
+            dto.setChemistry(u.getTotalChemistry());
             usersInLeaderboard.add(dto);
         }
 

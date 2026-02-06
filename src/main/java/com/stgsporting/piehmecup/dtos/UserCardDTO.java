@@ -14,6 +14,7 @@ public class UserCardDTO {
     private String name;
     private Integer cardRating;
     private Double lineupRating;
+    private int chemistry;
     private String imageUrl;
     private String imageKey;
     private String iconUrl;

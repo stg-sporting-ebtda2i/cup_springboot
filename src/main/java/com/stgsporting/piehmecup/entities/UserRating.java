@@ -1,5 +1,6 @@
 package com.stgsporting.piehmecup.entities;
 
+import com.stgsporting.piehmecup.config.DatabaseEnum;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,4 +18,7 @@ public class UserRating {
 
     @Column(name = "lineup_rating")
     private Double lineupRating;
+
+    @Column(name = DatabaseEnum.totalChemistry)
+    private Integer totalChemistry;
 }

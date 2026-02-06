@@ -28,7 +28,7 @@ public interface PriceRepository extends JpaRepository<Price, Long> {
     @Query("select p from PRICES p where p.level.id= :levelId")
     List<Price> findAllByLevelId(@Param("levelId") Long levelId);
 
-    @Query("select p from PRICES p where p.name != :name And p.level.id= :levelId")
+    @Query("select p from PRICES p where p.name != :name And p.level.id = :levelId And p.visible = true")
     List<Price> findAllExcept(@Param("name") String name, @Param("levelId") Long levelId);
 
     @Query("select p from PRICES p where p.level.id=:levelId")

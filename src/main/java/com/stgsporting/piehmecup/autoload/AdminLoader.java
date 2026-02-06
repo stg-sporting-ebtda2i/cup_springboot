@@ -24,7 +24,7 @@ public class AdminLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if(adminService.getAdminById(1).isEmpty()) {
+        if(adminService.getAllAdmins().isEmpty()) {
             AdminFormDTO admin = new AdminFormDTO();
 
             admin.setUsername("admin");

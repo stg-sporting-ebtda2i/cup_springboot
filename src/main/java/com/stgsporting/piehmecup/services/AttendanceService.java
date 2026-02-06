@@ -2,6 +2,8 @@ package com.stgsporting.piehmecup.services;
 
 import com.stgsporting.piehmecup.authentication.Authenticatable;
 import com.stgsporting.piehmecup.dtos.attendances.AttendanceDTO;
+import com.stgsporting.piehmecup.dtos.attendances.BulkAttendanceRequestDTO;
+import com.stgsporting.piehmecup.dtos.attendances.BulkAttendanceResponseDTO;
 import com.stgsporting.piehmecup.entities.*;
 import com.stgsporting.piehmecup.exceptions.*;
 import com.stgsporting.piehmecup.repositories.AttendanceRepository;
@@ -19,6 +21,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class AttendanceService {
@@ -44,7 +50,19 @@ public class AttendanceService {
         User user = userService.findOrFail(userId);
         Price price = priceService.getPrice(liturgyName, user.getSchoolYear().getLevel());
         validateAttendance(price, date, user);
-        saveAttendance(liturgyName, date, user);
+
+        // Remove this spagetti hardcoded trash on finishing this season
+        validateSpagetti(user, liturgyName);
+
+        saveAttendance(liturgyName, date, user, false);
+    }
+
+    // Remove this spagetti hardcoded trash on finishing this season
+    private void validateSpagetti(User user, String liturgyName) {
+        if (user.getSchoolYear().getId() != 9
+                && Objects.equals(liturgyName, "Osret El-Alhan (for j2 only)")) {
+            throw new InvalidAttendanceException("Not valid to your school year");
+        }
     }
 
     private void validateAttendance(Price price, Date date, User user) {
@@ -66,18 +84,18 @@ public class AttendanceService {
         LocalDate nextSunday = givenDateTime
                 .with(TemporalAdjusters.next(DayOfWeek.SUNDAY)).toLocalDate();
 
-        Boolean alreadyExists = attendanceRepository.existsAttendancesBetween(user, price, previousSaturday, nextSunday);
+        Optional<Attendance> attendance = attendanceRepository.findAttendanceBetween(user, price, previousSaturday, nextSunday);
 
-        if (alreadyExists) throw new InvalidAttendanceException("You can't attend the same liturgy twice in the same week");
+        if (attendance.isPresent()) throw new DuplicateAttendanceException(attendance.get());
     }
 
-    private void saveAttendance(String liturgyName, Date date, User user) {
+    private void saveAttendance(String liturgyName, Date date, User user, boolean approved) {
         Attendance attendance = new Attendance();
         attendance.setPrice(priceService.getPrice(liturgyName, user.getSchoolYear().getLevel()));
         attendance.setUser(user);
         attendance.setDate(date);
         attendance.setCreatedAt(new Timestamp(System.currentTimeMillis()));
-        attendance.setApproved(false);
+        attendance.setApproved(approved);
         attendanceRepository.save(attendance);
     }
 
@@ -97,7 +115,7 @@ public class AttendanceService {
 
         Price price = attendance.getPrice();
 
-        walletService.credit(attendance.getUser(), price.getCoins(), price.getName());
+        walletService.credit(attendance.getUser(), price.getCoins(), "Attended" + price.getName());
 
         attendanceRepository.save(attendance);
     }
@@ -125,6 +143,39 @@ public class AttendanceService {
         }
 
         attendanceRepository.delete(attendance);
+    }
+
+    @Transactional
+    public BulkAttendanceResponseDTO addBulkAttendance(BulkAttendanceRequestDTO attendanceDTO) {
+        List<Long> userIds = attendanceDTO.getUserIds();
+        List<String> failedUsers = new ArrayList<>();
+        List<String> approvedUsers = new ArrayList<>();
+        for (Long userId : userIds) {
+            User user = userService.findOrFail(userId);
+            Price price = priceService.getPrice(attendanceDTO.getLiturgyName(),
+                                                user.getSchoolYear().getLevel());
+            try {
+                validateAttendance(price, attendanceDTO.getDate(), user);
+                
+                // Remove this spagetti hardcoded trash on finishing this season
+                validateSpagetti(user, attendanceDTO.getLiturgyName());
+                
+                saveAttendance(attendanceDTO.getLiturgyName(),
+                            attendanceDTO.getDate(), user, true);
+                walletService.credit(user, price.getCoins(), "Attended" + price.getName());
+            } catch (DuplicateAttendanceException ex) {
+                Attendance attendance = ex.getAttendance();
+                if (attendance.getApproved()) {
+                    failedUsers.add(user.getUsername());
+                } else {
+                    attendance.setApproved(true);
+                    attendanceRepository.save(attendance);
+                    walletService.credit(user, price.getCoins(), "Attended" + price.getName());
+                    approvedUsers.add(user.getUsername());
+                }
+            }
+        }
+        return new BulkAttendanceResponseDTO(failedUsers, approvedUsers);
     }
 
     public Page<AttendanceDTO> getUnapprovedAttendances(Pageable pageable, SchoolYear schoolYear) {

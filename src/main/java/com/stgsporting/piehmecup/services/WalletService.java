@@ -3,6 +3,7 @@ package com.stgsporting.piehmecup.services;
 import com.stgsporting.piehmecup.entities.User;
 import com.stgsporting.piehmecup.enums.TransactionType;
 import com.stgsporting.piehmecup.exceptions.InsufficientCoinsException;
+import com.stgsporting.piehmecup.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,10 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class WalletService {
 
     private final UserService userService;
+    private final UserRepository userRepository;
     private final TransactionService transactionService;
 
-    public WalletService(UserService userService, TransactionService transactionService) {
+    public WalletService(UserService userService, UserRepository userRepository, TransactionService transactionService) {
         this.userService = userService;
+        this.userRepository = userRepository;
         this.transactionService = transactionService;
     }
 
@@ -29,15 +32,33 @@ public class WalletService {
 
     @Transactional
     public void debit(User user, Integer amount, String description, boolean ignoreCoins) {
-        if (!ignoreCoins && user.getCoins() < amount) {
+        Long userId = user.getId();
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID must not be null for wallet operations");
+        }
+
+        ensurePositiveAmount(amount);
+
+        int updatedRows = ignoreCoins
+            ? userRepository.forceDebitCoins(userId, amount)
+            : userRepository.debitCoinsIfEnough(userId, amount);
+
+        if (!ignoreCoins && updatedRows == 0) {
             throw new InsufficientCoinsException("Not enough coins");
         }
 
-        user.setCoins(user.getCoins() - amount);
+        if (updatedRows == 0) {
+            throw new IllegalStateException("User not found: " + userId);
+        }
 
-        userService.save(user);
+        User freshUser = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
 
-        transactionService.makeTransaction(user, amount, TransactionType.DEBIT, description);
+        user.setCoins(freshUser.getCoins());
+
+        userService.save(freshUser);
+
+        transactionService.makeTransaction(freshUser, amount, TransactionType.DEBIT, description);
     }
 
     @Transactional
@@ -52,10 +73,31 @@ public class WalletService {
 
     @Transactional
     public void credit(User user, Integer amount, String description) {
-        user.setCoins(user.getCoins() + amount);
+        Long userId = user.getId();
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID must not be null for wallet operations");
+        }
 
-        userService.save(user);
+        ensurePositiveAmount(amount);
 
-        transactionService.makeTransaction(user, amount, TransactionType.CREDIT, description);
+        int updatedRows = userRepository.creditCoins(userId, amount);
+        if (updatedRows == 0) {
+            throw new IllegalStateException("User not found: " + userId);
+        }
+
+        User freshUser = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
+
+        user.setCoins(freshUser.getCoins());
+
+        userService.save(freshUser);
+
+        transactionService.makeTransaction(freshUser, amount, TransactionType.CREDIT, description);
+    }
+
+    private void ensurePositiveAmount(Integer amount) {
+        if (amount == null || amount < 0) {
+            throw new IllegalArgumentException("Amount must be a positive value");
+        }
     }
 }

@@ -30,7 +30,10 @@ public class UserRatingLoader implements CommandLineRunner {
         String [] queries = queriesStr.split(";");
 
         for (String query : queries) {
-            jdbcTemplate.execute(query);
+            String q = query.trim();
+            if (!q.isEmpty()) {
+                jdbcTemplate.execute(q);
+            }
         }
     }
 }

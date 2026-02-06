@@ -1,6 +1,7 @@
 package com.stgsporting.piehmecup.controllers;
 
 import com.stgsporting.piehmecup.dtos.PaginationDTO;
+import com.stgsporting.piehmecup.dtos.attendances.BulkAttendanceRequestDTO;
 import com.stgsporting.piehmecup.dtos.attendances.RequestAttendanceDTO;
 import com.stgsporting.piehmecup.entities.SchoolYear;
 import com.stgsporting.piehmecup.entities.User;
@@ -55,6 +56,11 @@ public class AttendanceController {
     public ResponseEntity<Object> deleteAttendanceAdmin(@PathVariable Long attendanceId) {
         attendanceService.deleteAttendance(attendanceId);
         return ResponseEntity.ok().body(Map.of("message", "Attendance deleted"));
+    }
+
+    @PostMapping("ostaz/attendances")
+    public ResponseEntity<Object> addBulkAttendance(@RequestBody BulkAttendanceRequestDTO attendanceDTO) {
+        return ResponseEntity.ok().body(attendanceService.addBulkAttendance(attendanceDTO));
     }
 
     @PatchMapping("attendance/{liturgyName}")

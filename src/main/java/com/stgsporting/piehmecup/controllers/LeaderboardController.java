@@ -16,4 +16,5 @@ public class LeaderboardController {
     public ResponseEntity<Object> getLeaderboard() {
         return ResponseEntity.ok().body(userService.getLeaderboard());
     }
+
 }

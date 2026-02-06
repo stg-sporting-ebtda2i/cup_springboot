@@ -61,7 +61,20 @@ public class UserController {
 
         Page<UserInListDTO> users = userService
                 .getUsersBySchoolYear(admin.getSchoolYear(), search, pageable)
-                .map((user) -> new UserInListDTO(user, fileService));
+                .map((user) -> new UserInListDTO(user, fileService, 0));
+
+        return ResponseEntity.ok(new PaginationDTO<>(users));
+    }
+
+    @GetMapping("coins")
+    public ResponseEntity<Object> coinsIndex(@RequestParam @Nullable Integer page, @RequestParam @Nullable String search) {
+        Admin admin = (Admin) adminService.getAuthenticatable();
+
+        Pageable pageable = PageRequest.of(page == null ? 0 : page, 10);
+
+        Page<UserInListDTO> users = userService
+                .getUsersBySchoolYearAndCoins(admin.getSchoolYear(), search, pageable)
+                .map((userCoinsDTO) -> new UserInListDTO(userCoinsDTO.getUser(), fileService, userCoinsDTO.getCoins().intValue()));
 
         return ResponseEntity.ok(new PaginationDTO<>(users));
     }

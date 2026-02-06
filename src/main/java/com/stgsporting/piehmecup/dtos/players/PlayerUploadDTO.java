@@ -14,4 +14,7 @@ public class PlayerUploadDTO {
     private Boolean available;
     private MultipartFile image;
     private Integer price;
+    private String club;
+    private String league;
+    private String nationality;
 }

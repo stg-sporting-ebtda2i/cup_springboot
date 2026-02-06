@@ -13,6 +13,7 @@ public class UserInLeaderboardDTO {
     private Long id;
     private String name;
     private Integer cardRating;
+    private Integer chemistry;
     private String imageUrl;
     private String imageKey;
     private String Position;

@@ -23,6 +23,7 @@ public class DatabaseEnum {
     public static final String confirmed = "confirmed";
     public static final String waladImgLink = "imgLink";
     public static final String leaderboardBoolean = "leaderboardBoolean";
+    public static final String totalChemistry = "totalChemistry";
 
     // ADMINS TABLE
     public static final String adminsTable = "ADMINS";
@@ -37,6 +38,7 @@ public class DatabaseEnum {
     // OWNED PLAYERS TABLE
     public static final String ownedPlayersTable = "OWNED_PLAYERS";
     public static final String playerId = "playerId";
+    public static final String chemistry = "chemistry";
 
     // OWNED ICONS TABLE
     public static final String ownedIconsTable = "OWNED_ICONS";
@@ -56,6 +58,9 @@ public class DatabaseEnum {
     public static final String rating = "rating";
     public static final String playerImgLink = "imgLink";
     public static final String position = "position";
+    public static final String nationality = "nationality";
+    public static final String club = "club";
+    public static final String league = "league";
 
     // ICONS TABLE
     public static final String iconsTable = "ICONS";

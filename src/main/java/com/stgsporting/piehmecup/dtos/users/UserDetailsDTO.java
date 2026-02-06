@@ -25,6 +25,7 @@ public class UserDetailsDTO {
     private String selectedIcon;
     private Boolean confirmed;
     private List<AttendanceUserDTO> attendances;
+    private Integer chemistry;
 
 
     public UserDetailsDTO(User user, FileService fileService) {
@@ -33,6 +34,7 @@ public class UserDetailsDTO {
         this.coins = user.getCoins();
         this.cardRating = user.getCardRating();
         this.lineupRating = user.getLineupRating();
+        this.chemistry = user.getTotalChemistry();
         Icon selectedIcon = user.getSelectedIcon();
         this.confirmed = user.getConfirmed();
         this.leaderboardBoolean = user.getLeaderboardBoolean();
