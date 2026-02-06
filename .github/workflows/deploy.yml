@@ -34,7 +34,7 @@ jobs:
 
       - name: Upload jar
         run: |
-          scp -i ~/.ssh/deploy_key target/piehme_cup.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/piehme_cup.jar
+          scp -i ~/.ssh/deploy_key target/*.jar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/app.jar
 
       - name: Upload application.properties
         run: |
@@ -43,7 +43,7 @@ jobs:
       - name: Move files and start service
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-            sudo mv ~/piehme_cup.jar /var/www/cup/app.jar
+            sudo mv ~/app.jar /var/www/cup/app.jar
             sudo mv ~/application.properties /var/www/cup/application.properties
             sudo chown -R webapp:webapp /var/www/cup
             sudo systemctl start cup
