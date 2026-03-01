@@ -53,6 +53,7 @@ public class AttendanceService {
 
         // Remove this spagetti hardcoded trash on finishing this season
         validateSpagetti(user, liturgyName);
+        validateOdas(liturgyName, date);
 
         saveAttendance(liturgyName, date, user, false);
     }
@@ -62,6 +63,14 @@ public class AttendanceService {
         if (user.getSchoolYear().getId() != 2
                 && Objects.equals(liturgyName, "Osret El-Alhan (for j2 only)")) {
             throw new InvalidAttendanceException("Not valid to your school year");
+        }
+    }
+
+    private void validateOdas(String liturgyName, Date date) {
+        if(liturgyName.equals("Odas")) {
+            if (date.toLocalDate().getDayOfWeek() == DayOfWeek.FRIDAY) {
+                throw new InvalidAttendanceException("This is Odas Atfal (Odas el Gom3a) not Odas");
+            }
         }
     }
 
