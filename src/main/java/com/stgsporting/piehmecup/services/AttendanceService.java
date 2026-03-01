@@ -76,9 +76,7 @@ public class AttendanceService {
                 .toLocalDate();
 
         if (localDate.getDayOfWeek() == DayOfWeek.FRIDAY) {
-            throw new InvalidAttendanceException(
-                    "This is Odas Atfal (Odas el Gom3a) not Odas"
-            );
+            throw new InvalidAttendanceException("This is Odas Atfal (Odas el Gom3a) not Odas");
         }
     }
 
