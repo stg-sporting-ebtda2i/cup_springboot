@@ -67,10 +67,18 @@ public class AttendanceService {
     }
 
     private void validateOdas(String liturgyName, Date date) {
-        if(liturgyName.equals("Odas")) {
-            if (date.toLocalDate().getDayOfWeek() == DayOfWeek.FRIDAY) {
-                throw new InvalidAttendanceException("This is Odas Atfal (Odas el Gom3a) not Odas");
-            }
+        if (!"Odas".equalsIgnoreCase(liturgyName)) {
+            return;
+        }
+
+        LocalDate localDate = date.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+
+        if (localDate.getDayOfWeek() == DayOfWeek.FRIDAY) {
+            throw new InvalidAttendanceException(
+                    "This is Odas Atfal (Odas el Gom3a) not Odas"
+            );
         }
     }
 
