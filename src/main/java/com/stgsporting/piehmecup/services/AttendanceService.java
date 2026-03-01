@@ -59,7 +59,7 @@ public class AttendanceService {
 
     // Remove this spagetti hardcoded trash on finishing this season
     private void validateSpagetti(User user, String liturgyName) {
-        if (user.getSchoolYear().getId() != 9
+        if (user.getSchoolYear().getId() != 2
                 && Objects.equals(liturgyName, "Osret El-Alhan (for j2 only)")) {
             throw new InvalidAttendanceException("Not valid to your school year");
         }
