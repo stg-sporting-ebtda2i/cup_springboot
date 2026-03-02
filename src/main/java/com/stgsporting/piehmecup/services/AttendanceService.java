@@ -52,7 +52,7 @@ public class AttendanceService {
         validateAttendance(price, date, user);
 
         // Remove this spagetti hardcoded trash on finishing this season
-        validateSpagetti(user, liturgyName);
+        //validateSpagetti(user, liturgyName);
         validateOdas(liturgyName, date);
 
         saveAttendance(liturgyName, date, user, false);
@@ -167,7 +167,7 @@ public class AttendanceService {
                 validateAttendance(price, attendanceDTO.getDate(), user);
                 
                 // Remove this spagetti hardcoded trash on finishing this season
-                validateSpagetti(user, attendanceDTO.getLiturgyName());
+                //validateSpagetti(user, attendanceDTO.getLiturgyName());
                 
                 saveAttendance(attendanceDTO.getLiturgyName(),
                             attendanceDTO.getDate(), user, true);
