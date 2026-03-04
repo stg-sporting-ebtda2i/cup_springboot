@@ -9,6 +9,6 @@ public class CtfController {
 
     @GetMapping
     public ResponseEntity<Object> ctfFlag() {
-        return ResponseEntity.ok("Oops you got me: U0VSVkVSIEhBQ0tFUg== TEST CHANGES");
+        return ResponseEntity.ok("Oops you got me: U0VSVkVSIEhBQ0tFUg==");
     }
 }
