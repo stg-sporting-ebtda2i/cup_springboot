@@ -51,14 +51,19 @@ public class AttendanceService {
         Price price = priceService.getPrice(liturgyName, user.getSchoolYear().getLevel());
         validateAttendance(price, date, user);
 
-        // Remove this spagetti hardcoded trash on finishing this season
-        //validateSpagetti(user, liturgyName);
+        // Remove this spagetti on finishing this season
+        validateSpagetti(user, liturgyName);
         validateOdas(liturgyName, date);
 
         saveAttendance(liturgyName, date, user, false);
     }
 
-
+    private void validateSpagetti(User user, String liturgyName) {
+        if (user.getSchoolYear().getId() != 2
+                && Objects.equals(liturgyName, "Osret El-Alhan (for j2 only)")) {
+            throw new InvalidAttendanceException("Not valid to your school year");
+        }
+    }
 
     private void validateOdas(String liturgyName, Date date) {
         if (!"Odas".equalsIgnoreCase(liturgyName)) {
@@ -166,8 +171,8 @@ public class AttendanceService {
             try {
                 validateAttendance(price, attendanceDTO.getDate(), user);
                 
-                // Remove this spagetti hardcoded trash on finishing this season
-                //validateSpagetti(user, attendanceDTO.getLiturgyName());
+                // Remove this spagetti on finishing this season
+                validateSpagetti(user, attendanceDTO.getLiturgyName());
                 
                 saveAttendance(attendanceDTO.getLiturgyName(),
                             attendanceDTO.getDate(), user, true);
