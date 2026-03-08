@@ -53,7 +53,7 @@ public class AttendanceService {
 
         // Remove this spagetti on finishing this season
         validateSpagetti(user, liturgyName);
-        validateOdas(liturgyName, date);
+        //validateOdas(liturgyName, date);
 
         saveAttendance(liturgyName, date, user, false);
     }
