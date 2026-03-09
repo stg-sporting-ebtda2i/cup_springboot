@@ -60,12 +60,19 @@ public class AdminQuizController {
         return ResponseEntity.ok(Map.of("message", "Response Deleted Successfully"));
     }
 
+    @PatchMapping("/responses/{id}")
+    public ResponseEntity<Object> updateResponse(@PathVariable Long id, @RequestBody JSONObject body) {
+        quizService.updateResponse(id, body);
+
+        return ResponseEntity.ok(Map.of("message", "Response Updated Successfully"));
+    }
+
     @GetMapping("/{slug}")
     public ResponseEntity<Object> show(@PathVariable String slug, @RequestParam(required = false) boolean withResponses) {
         return ResponseEntity.ok(
                 quizService.getQuizBySlug(
                         slug, adminService.getAuthenticatable().getSchoolYear(), true, withResponses
-        ));
+                ));
     }
 
     @PatchMapping("/responses/{id}/correct")

@@ -57,6 +57,37 @@ public class QuizService {
         walletService.credit(user, coins, "Corrected Question: " + questionId + " in Quiz: " + quizId);
     }
 
+    public void updateResponse(Long responseId, JSONObject body) {
+        String url = "/responses/" + responseId;
+
+        Response response = httpService.patch(url, body);
+
+        if (!response.isSuccessful()) {
+            if (response.getStatusCode() == HttpStatus.BAD_REQUEST || response.getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY) {
+                JSONObject jsonObject = response.getJsonBody();
+                throw new IllegalArgumentException(jsonObject.getAsString("message"));
+            }
+
+            throw new IllegalArgumentException("Could not update response");
+        }
+
+        JSONObject jsonObject = response.getJsonBody();
+        Long entityId = jsonObject.getAsNumber("entity_id").longValue();
+        long quizId = jsonObject.getAsNumber("quiz_id").longValue();
+        long questionId = jsonObject.getAsNumber("question_id").longValue();
+        int deltaPoints = jsonObject.getAsNumber("delta_points").intValue();
+        User user = userService.getUserByQuizId(entityId)
+                .orElseThrow(UserNotFoundException::new);
+
+        if (deltaPoints > 0) {
+            walletService.credit(user, deltaPoints, "Edited Response for Question: " + questionId + " in Quiz: " + quizId);
+        }
+
+        if (deltaPoints < 0) {
+            walletService.forceDebit(user, Math.abs(deltaPoints), "Edited Response for Question: " + questionId + " in Quiz: " + quizId);
+        }
+    }
+
     public void deleteResponse(Long responseId) {
         String url = "/responses/" + responseId;
 
