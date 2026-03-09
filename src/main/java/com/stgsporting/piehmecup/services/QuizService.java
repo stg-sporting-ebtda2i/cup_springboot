@@ -1,12 +1,10 @@
 package com.stgsporting.piehmecup.services;
 
 import com.stgsporting.piehmecup.authentication.Authenticatable;
-import com.stgsporting.piehmecup.entities.Admin;
 import com.stgsporting.piehmecup.entities.Quiz;
 import com.stgsporting.piehmecup.entities.SchoolYear;
 import com.stgsporting.piehmecup.entities.User;
 import com.stgsporting.piehmecup.exceptions.ChangePasswordException;
-import com.stgsporting.piehmecup.exceptions.InvalidCredentialsException;
 import com.stgsporting.piehmecup.exceptions.NotFoundException;
 import com.stgsporting.piehmecup.exceptions.UserNotFoundException;
 import com.stgsporting.piehmecup.helpers.Response;
@@ -109,6 +107,63 @@ public class QuizService {
                 .orElseThrow(UserNotFoundException::new);
 
         walletService.forceDebit(user, pointsToRemove, "Deleted Response in Quiz: " + quiz.getId());
+    }
+
+    public JSONObject updateQuiz(Long quizId, JSONObject quiz) {
+        Response response = httpService.patch("/quizzes/" + quizId, quiz);
+
+        if (!response.isSuccessful()) {
+            if (response.getStatusCode() == HttpStatus.BAD_REQUEST || response.getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY) {
+                JSONObject jsonObject = response.getJsonBody();
+                throw new IllegalArgumentException(jsonObject.getAsString("message"));
+            }
+
+            throw new IllegalArgumentException("Could not update quiz");
+        }
+
+        JSONObject jsonObject = response.getJsonBody();
+        reconcileQuizRescoreWallets(jsonObject);
+
+        return jsonObject;
+    }
+
+    private void reconcileQuizRescoreWallets(JSONObject jsonObject) {
+        Object rescoreSummaryObject = jsonObject.get("rescore_summary");
+        if (!(rescoreSummaryObject instanceof JSONObject rescoreSummary)) {
+            return;
+        }
+
+        Object itemsObject = rescoreSummary.get("items");
+        if (!(itemsObject instanceof JSONArray items)) {
+            return;
+        }
+
+        for (Object itemObject : items) {
+            if (!(itemObject instanceof JSONObject item)) {
+                continue;
+            }
+
+            int deltaPoints = item.getAsNumber("delta_points").intValue();
+            if (deltaPoints == 0) {
+                continue;
+            }
+
+            Long entityId = item.getAsNumber("entity_id").longValue();
+            long quizId = item.getAsNumber("quiz_id").longValue();
+            long questionId = item.getAsNumber("question_id").longValue();
+            User user = userService.getUserByQuizId(entityId)
+                    .orElseThrow(UserNotFoundException::new);
+
+            String reason = "Re-scored Question: " + questionId + " in Quiz: " + quizId;
+
+            if (deltaPoints > 0) {
+                walletService.credit(user, deltaPoints, reason);
+            }
+
+            if (deltaPoints < 0) {
+                walletService.forceDebit(user, Math.abs(deltaPoints), reason);
+            }
+        }
     }
 
     public List<Quiz> getQuizzes(SchoolYear schoolYear, Long quizId) {

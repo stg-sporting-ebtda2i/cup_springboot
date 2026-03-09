@@ -126,16 +126,10 @@ public class AdminQuizController {
     @PatchMapping("/{quizId}")
     public ResponseEntity<Object> update(@RequestBody JSONObject quiz, @PathVariable Long quizId) {
         mapQuiz(quiz);
-        Response response = httpService.patch("/quizzes/" + quizId, quiz);
-
-        if (! response.isSuccessful()) {
-            return ResponseEntity
-                    .status(response.getStatusCode())
-                    .body(response.getJsonBody());
+        try {
+            return ResponseEntity.ok(quizService.updateQuiz(quizId, quiz));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
-
-        return ResponseEntity.ok(
-                Map.of("message", "Quiz Updated Successfully")
-        );
     }
 }
