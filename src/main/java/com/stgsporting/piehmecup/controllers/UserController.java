@@ -66,6 +66,19 @@ public class UserController {
         return ResponseEntity.ok(new PaginationDTO<>(users));
     }
 
+    @GetMapping("nerfed")
+    public ResponseEntity<Object> nerfedIndex(@RequestParam @Nullable Integer page, @RequestParam @Nullable String search) {
+        Admin admin = (Admin) adminService.getAuthenticatable();
+
+        Pageable pageable = PageRequest.of(page == null ? 0 : page, 10);
+
+        Page<UserInListDTO> users = userService
+                .getUsersBySchoolYearNerfed(admin.getSchoolYear(), search, pageable)
+                .map((user) -> new UserInListDTO(user, fileService, 0));
+
+        return ResponseEntity.ok(new PaginationDTO<>(users));
+    }
+
     @GetMapping("coins")
     public ResponseEntity<Object> coinsIndex(@RequestParam @Nullable Integer page, @RequestParam @Nullable String search) {
         Admin admin = (Admin) adminService.getAuthenticatable();

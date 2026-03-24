@@ -60,6 +60,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LIKE :search ORDER BY (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) desc, u.id asc")
     Page<User> findUsersBySchoolYearPaginated(SchoolYear schoolYear, String search, Pageable pageable);
 
+    @Query("SELECT u FROM User u LEFT JOIN u.totalChemistry tc WHERE u.schoolYear = :schoolYear and u.username " +
+            "LIKE :search ORDER BY (u.lineupRating.lineupRating + SQRT(COALESCE(tc.totalChemistry, 0)) * 0.25) desc, u.id asc")
+    Page<User> findUsersBySchoolYearPaginatedNerfed(SchoolYear schoolYear, String search, Pageable pageable);
+
     @Query("""
             SELECT new com.stgsporting.piehmecup.dtos.users.UserCoinsDTO(
                 u,
