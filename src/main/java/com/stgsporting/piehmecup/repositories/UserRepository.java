@@ -53,15 +53,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u LEFT JOIN u.totalChemistry tc WHERE u.schoolYear = :schoolYear " +
             "AND u.leaderboardBoolean = true AND u.lineupRating.lineupRating > 4.55 " +
-            "ORDER BY (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) desc, u.totalCoinsEarned desc, u.id asc")
+            "ORDER BY (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) desc, ((SELECT COALESCE(SUM(ct.amount), 0) FROM TRANSACTIONS ct WHERE ct.user = u AND ct.type = 'CREDIT' AND (ct.description LIKE '%Admin%' OR ct.description LIKE '%Attended%' OR ct.description LIKE '%Question%' OR ct.description LIKE '%Quiz%')) - (SELECT COALESCE(SUM(dt.amount), 0) FROM TRANSACTIONS dt WHERE dt.user = u AND dt.type = 'DEBIT' AND (dt.description LIKE '%Admin%' OR dt.description LIKE '%Quiz%' OR dt.description LIKE '%deleted%'))) desc, u.id asc")
     List<User> findUsersBySchoolYear(SchoolYear schoolYear);
 
     @Query("SELECT u FROM User u LEFT JOIN u.totalChemistry tc WHERE u.schoolYear = :schoolYear and u.username " +
-            "LIKE :search ORDER BY (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) desc, u.totalCoinsEarned desc, u.id asc")
+            "LIKE :search ORDER BY (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) desc, ((SELECT COALESCE(SUM(ct.amount), 0) FROM TRANSACTIONS ct WHERE ct.user = u AND ct.type = 'CREDIT' AND (ct.description LIKE '%Admin%' OR ct.description LIKE '%Attended%' OR ct.description LIKE '%Question%' OR ct.description LIKE '%Quiz%')) - (SELECT COALESCE(SUM(dt.amount), 0) FROM TRANSACTIONS dt WHERE dt.user = u AND dt.type = 'DEBIT' AND (dt.description LIKE '%Admin%' OR dt.description LIKE '%Quiz%' OR dt.description LIKE '%deleted%'))) desc, u.id asc")
     Page<User> findUsersBySchoolYearPaginated(SchoolYear schoolYear, String search, Pageable pageable);
 
     @Query("SELECT u FROM User u LEFT JOIN u.totalChemistry tc WHERE u.schoolYear = :schoolYear and u.username " +
-            "LIKE :search ORDER BY (u.lineupRating.lineupRating + SQRT(COALESCE(tc.totalChemistry, 0)) * 0.25) desc, u.totalCoinsEarned desc, u.id asc")
+            "LIKE :search ORDER BY (u.lineupRating.lineupRating + SQRT(COALESCE(tc.totalChemistry, 0)) * 0.25) desc, ((SELECT COALESCE(SUM(ct.amount), 0) FROM TRANSACTIONS ct WHERE ct.user = u AND ct.type = 'CREDIT' AND (ct.description LIKE '%Admin%' OR ct.description LIKE '%Attended%' OR ct.description LIKE '%Question%' OR ct.description LIKE '%Quiz%')) - (SELECT COALESCE(SUM(dt.amount), 0) FROM TRANSACTIONS dt WHERE dt.user = u AND dt.type = 'DEBIT' AND (dt.description LIKE '%Admin%' OR dt.description LIKE '%Quiz%' OR dt.description LIKE '%deleted%'))) desc, u.id asc")
     Page<User> findUsersBySchoolYearPaginatedNerfed(SchoolYear schoolYear, String search, Pageable pageable);
 
     @Query("""
