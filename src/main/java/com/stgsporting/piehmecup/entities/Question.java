@@ -18,6 +18,7 @@ public class Question {
     private String picture;
     private QuestionType type;
     private Long coins;
+    private Long order;
     private List<Option> options;
     private Object answers;
 
@@ -33,6 +34,10 @@ public class Question {
         question.setCoins((Long) questionJson.get("points"));
         question.setAnswers(questionJson.get("answers"));
         question.setType(QuestionType.fromId(Math.toIntExact((Long) questionJson.get("type"))));
+
+        if (questionJson.get("order") != null) {
+            question.setOrder((Long) questionJson.get("order"));
+        }
 
         JSONArray optionsArray = (JSONArray) questionJson.get("options");
         if (optionsArray != null) {

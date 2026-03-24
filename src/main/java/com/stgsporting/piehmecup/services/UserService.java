@@ -227,12 +227,6 @@ public class UserService implements AuthenticatableService {
         return userRepository.findUsersBySchoolYearPaginated(schoolYear,search + "%", page);
     }
 
-    public Page<User> getUsersBySchoolYearNerfed(SchoolYear schoolYear, String search, Pageable page) {
-        if(search == null) search = "";
-
-        return userRepository.findUsersBySchoolYearPaginatedNerfed(schoolYear,search + "%", page);
-    }
-
     public Page<UserCoinsDTO> getUsersBySchoolYearAndCoins(SchoolYear schoolYear, String search, Pageable page) {
         if(search == null) search = "";
 
