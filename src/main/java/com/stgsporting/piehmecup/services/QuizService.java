@@ -280,4 +280,20 @@ public class QuizService {
 
         return 0L;
     }
+
+    public JSONArray getRecentQuizResponses(String since) {
+        String url = "/entity-quizzes/recent";
+        if (since != null) {
+            url += "?since=" + since;
+        }
+
+        Response response = httpService.get(url);
+
+        if (response.isSuccessful()) {
+            JSONObject jsonObject = response.getJsonBody();
+            return (JSONArray) jsonObject.get("responses");
+        }
+
+        return new JSONArray();
+    }
 }
