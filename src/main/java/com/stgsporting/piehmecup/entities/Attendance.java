@@ -16,6 +16,9 @@ import java.sql.Timestamp;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity(name = DatabaseEnum.attendanceTable)
+@Table(indexes = {
+        @Index(name = "idx_attendance_user_approved", columnList = DatabaseEnum.userId + ", " + DatabaseEnum.approved)
+})
 public class Attendance extends BaseEntity {
 
     @ManyToOne

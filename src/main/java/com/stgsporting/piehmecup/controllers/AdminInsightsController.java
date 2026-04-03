@@ -3,6 +3,7 @@ package com.stgsporting.piehmecup.controllers;
 import com.stgsporting.piehmecup.entities.Admin;
 import com.stgsporting.piehmecup.services.AdminService;
 import com.stgsporting.piehmecup.services.InsightsService;
+import org.springframework.lang.Nullable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,6 +50,12 @@ public class AdminInsightsController {
     public ResponseEntity<Object> topAttendanceUsers(@RequestParam(defaultValue = "10") Integer limit) {
         Admin admin = (Admin) adminService.getAuthenticatable();
         return ResponseEntity.ok(insightsService.getTopAttendanceUsers(admin.getSchoolYear(), limit));
+    }
+
+    @GetMapping("/stats/users/attempted-all")
+    public ResponseEntity<Object> usersAttemptedAllQuizzes(@RequestParam @Nullable Integer page) {
+        Admin admin = (Admin) adminService.getAuthenticatable();
+        return ResponseEntity.ok(insightsService.getUsersAttemptedAllPublishedQuizzes(admin.getSchoolYear(), page));
     }
 
     @GetMapping("/stats/players/best-sellers")

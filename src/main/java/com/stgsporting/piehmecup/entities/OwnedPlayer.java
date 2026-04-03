@@ -11,7 +11,10 @@ import lombok.*;
 @Builder
 @Entity
 @Table(name = DatabaseEnum.ownedPlayersTable,
-        uniqueConstraints = @UniqueConstraint(name = "uk_owned_player_user_player", columnNames = {"user_id", "player_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uk_owned_player_user_player", columnNames = {"user_id", "player_id"}),
+        indexes = {
+                @Index(name = "idx_owned_player_player", columnList = "player_id")
+        })
 public class OwnedPlayer {
 
     @Id

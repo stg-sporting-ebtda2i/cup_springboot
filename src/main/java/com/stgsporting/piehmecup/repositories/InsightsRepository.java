@@ -3,9 +3,9 @@ package com.stgsporting.piehmecup.repositories;
 import com.stgsporting.piehmecup.dtos.insights.BestSellerDTO;
 import com.stgsporting.piehmecup.dtos.insights.UserLongMetricDTO;
 import com.stgsporting.piehmecup.dtos.insights.UserSpendValueDTO;
+import com.stgsporting.piehmecup.dtos.users.UserCoinsDTO;
 import com.stgsporting.piehmecup.entities.Player;
 import com.stgsporting.piehmecup.entities.SchoolYear;
-import com.stgsporting.piehmecup.entities.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -25,12 +25,55 @@ public interface InsightsRepository extends JpaRepository<Player, Long> {
     List<BestSellerDTO> findBestSeller(@Param("levelId") Long levelId);
 
     @Query("""
-            SELECT u FROM User u
+            SELECT new com.stgsporting.piehmecup.dtos.users.UserCoinsDTO(
+                u,
+                (
+                    SELECT COALESCE(SUM(ct.amount), 0)
+                    FROM TRANSACTIONS ct
+                    WHERE ct.user = u AND ct.type = 'CREDIT' AND (
+                        ct.description LIKE '%Admin%' OR
+                        ct.description LIKE '%Attended%' OR
+                        ct.description LIKE '%Question%' OR
+                        ct.description LIKE '%Quiz%'
+                    )
+                ) - (
+                    SELECT COALESCE(SUM(dt.amount), 0)
+                    FROM TRANSACTIONS dt
+                    WHERE dt.user = u AND dt.type = 'DEBIT' AND (
+                        dt.description LIKE '%Admin%' OR
+                        dt.description LIKE '%Quiz%' OR
+                        dt.description LIKE '%deleted%'
+                    )
+                )
+            )
+            FROM User u
             LEFT JOIN u.totalChemistry tc
             WHERE u.schoolYear = :schoolYear
-            ORDER BY (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) DESC, u.id ASC
+            ORDER BY
+                (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) DESC,
+                (
+                    (
+                        SELECT COALESCE(SUM(ct.amount), 0)
+                        FROM TRANSACTIONS ct
+                        WHERE ct.user = u AND ct.type = 'CREDIT' AND (
+                            ct.description LIKE '%Admin%' OR
+                            ct.description LIKE '%Attended%' OR
+                            ct.description LIKE '%Question%' OR
+                            ct.description LIKE '%Quiz%'
+                        )
+                    ) - (
+                        SELECT COALESCE(SUM(dt.amount), 0)
+                        FROM TRANSACTIONS dt
+                        WHERE dt.user = u AND dt.type = 'DEBIT' AND (
+                            dt.description LIKE '%Admin%' OR
+                            dt.description LIKE '%Quiz%' OR
+                            dt.description LIKE '%deleted%'
+                        )
+                    )
+                ) DESC,
+                u.id ASC
             """)
-    List<User> findTopUsersByOverallScore(@Param("schoolYear") SchoolYear schoolYear, Pageable pageable);
+    List<UserCoinsDTO> findTopUsersByOverallScore(@Param("schoolYear") SchoolYear schoolYear, Pageable pageable);
 
     @Query("""
             SELECT new com.stgsporting.piehmecup.dtos.insights.UserSpendValueDTO(

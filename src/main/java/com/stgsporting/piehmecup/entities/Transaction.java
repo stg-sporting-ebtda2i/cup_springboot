@@ -11,7 +11,10 @@ import java.sql.Timestamp;
 @Setter
 @Getter
 @Entity(name = DatabaseEnum.transactionsTable)
-@Table(indexes = @Index(name = "idx_transaction_description", columnList = DatabaseEnum.transactionDescription))
+@Table(indexes = {
+        @Index(name = "idx_transaction_description", columnList = DatabaseEnum.transactionDescription),
+        @Index(name = "idx_transaction_user_type", columnList = DatabaseEnum.transactionUserId + ", " + DatabaseEnum.transactionType)
+})
 public class Transaction extends BaseEntity {
 
     @ManyToOne

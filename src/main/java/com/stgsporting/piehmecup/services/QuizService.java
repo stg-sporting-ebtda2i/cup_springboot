@@ -1,6 +1,12 @@
 package com.stgsporting.piehmecup.services;
 
 import com.stgsporting.piehmecup.authentication.Authenticatable;
+import com.stgsporting.piehmecup.dtos.insights.ChoiceDistributionDTO;
+import com.stgsporting.piehmecup.dtos.insights.EntityQuizAttemptsDTO;
+import com.stgsporting.piehmecup.dtos.insights.HardestQuestionDTO;
+import com.stgsporting.piehmecup.dtos.insights.HardestQuestionsByQuizDTO;
+import com.stgsporting.piehmecup.dtos.insights.QuizDifficultyDTO;
+import com.stgsporting.piehmecup.dtos.insights.QuizStatsSummaryDTO;
 import com.stgsporting.piehmecup.entities.Quiz;
 import com.stgsporting.piehmecup.entities.SchoolYear;
 import com.stgsporting.piehmecup.entities.User;
@@ -235,6 +241,97 @@ public class QuizService {
         throw new NotFoundException("Quiz not found");
     }
 
+    public QuizStatsSummaryDTO getQuizStatsSummary(SchoolYear schoolYear) {
+        JSONObject jsonObject = getStatsJson("/quizzes/stats/summary?group=" + schoolYear.getSlug());
+        JSONObject summary = (JSONObject) jsonObject.get("summary");
+
+        return new QuizStatsSummaryDTO(
+                summary.getAsNumber("quizzesCount").intValue(),
+                summary.getAsNumber("questionsCount").intValue()
+        );
+    }
+
+    public List<QuizDifficultyDTO> getQuizDifficultyStats(SchoolYear schoolYear) {
+        JSONObject jsonObject = getStatsJson("/quizzes/stats/difficulty?group=" + schoolYear.getSlug());
+        JSONArray quizzes = (JSONArray) jsonObject.get("quizzes");
+
+        return quizzes == null
+                ? List.of()
+                : quizzes.stream()
+                .map(JSONObject.class::cast)
+                .map(QuizDifficultyDTO::fromJson)
+                .toList();
+    }
+
+    public List<HardestQuestionDTO> getHardestQuestionsStats(SchoolYear schoolYear, Integer limit) {
+        JSONObject jsonObject = getStatsJson("/quizzes/stats/questions/hardest?group=" + schoolYear.getSlug() + "&limit=" + normalizeStatsLimit(limit));
+        JSONArray questions = (JSONArray) jsonObject.get("questions");
+
+        return questions == null
+                ? List.of()
+                : questions.stream()
+                .map(JSONObject.class::cast)
+                .map(HardestQuestionDTO::fromJson)
+                .toList();
+    }
+
+    public List<HardestQuestionsByQuizDTO> getHardestQuestionsByQuizStats(SchoolYear schoolYear, Integer limit) {
+        JSONObject jsonObject = getStatsJson("/quizzes/stats/questions/by-quiz?group=" + schoolYear.getSlug() + "&limit=" + normalizePerQuizLimit(limit));
+        JSONArray quizzes = (JSONArray) jsonObject.get("quizzes");
+
+        return quizzes == null
+                ? List.of()
+                : quizzes.stream()
+                .map(JSONObject.class::cast)
+                .map(HardestQuestionsByQuizDTO::fromJson)
+                .toList();
+    }
+
+    public List<HardestQuestionDTO> getHardestQuestionsForQuizStats(SchoolYear schoolYear, String slug, Integer limit) {
+        JSONObject jsonObject = getStatsJson(
+                "/quizzes/stats/quizzes/" + slug + "/questions/hardest?group=" + schoolYear.getSlug() + "&limit=" + normalizeStatsLimit(limit)
+        );
+        JSONArray questions = (JSONArray) jsonObject.get("questions");
+
+        return questions == null
+                ? List.of()
+                : questions.stream()
+                .map(JSONObject.class::cast)
+                .map(HardestQuestionDTO::fromJson)
+                .toList();
+    }
+
+    public ChoiceDistributionDTO getQuestionDistributionStats(SchoolYear schoolYear, Long questionId) {
+        JSONObject jsonObject = getStatsJson("/quizzes/stats/questions/" + questionId + "/distribution?group=" + schoolYear.getSlug());
+        JSONObject distribution = (JSONObject) jsonObject.get("distribution");
+
+        if (distribution == null) {
+            return null;
+        }
+
+        return ChoiceDistributionDTO.fromJson(distribution);
+    }
+
+    public List<EntityQuizAttemptsDTO> getAttemptCounts(SchoolYear schoolYear) {
+        JSONObject jsonObject = getStatsJson("/quizzes/stats/attempts?group=" + schoolYear.getSlug());
+        JSONArray attempts = (JSONArray) jsonObject.get("attempts");
+
+        return attempts == null
+                ? List.of()
+                : attempts.stream()
+                .map(JSONObject.class::cast)
+                .map(json -> new EntityQuizAttemptsDTO(
+                        json.getAsNumber("entityId").longValue(),
+                        json.getAsNumber("attemptedQuizzesCount").longValue()
+                ))
+                .toList();
+    }
+
+    public Long getPublishedQuizCount(SchoolYear schoolYear) {
+        JSONObject jsonObject = getStatsJson("/quizzes/stats/published-count?group=" + schoolYear.getSlug());
+        return jsonObject.getAsNumber("count").longValue();
+    }
+
     public Long submitQuiz(User user, Quiz quiz, JSONObject answers) {
         if(user.getQuizId() == null || user.getQuizId() == 0) {
             user.setQuizId(
@@ -295,5 +392,30 @@ public class QuizService {
         }
 
         return new JSONArray();
+    }
+
+    private JSONObject getStatsJson(String url) {
+        Response response = httpService.get(url);
+        if (response.isSuccessful()) {
+            return response.getJsonBody();
+        }
+
+        throw new NotFoundException("Quiz stats not found");
+    }
+
+    private int normalizeStatsLimit(Integer limit) {
+        if (limit == null) {
+            return 10;
+        }
+
+        return limit <= 10 ? 10 : 20;
+    }
+
+    private int normalizePerQuizLimit(Integer limit) {
+        if (limit == null || limit <= 0) {
+            return 3;
+        }
+
+        return Math.min(limit, 10);
     }
 }

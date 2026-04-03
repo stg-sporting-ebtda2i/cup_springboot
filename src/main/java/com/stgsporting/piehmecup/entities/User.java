@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
         name = DatabaseEnum.usersTable,
         indexes = {
                 @Index(name = "idx_schoolyear_username", columnList = DatabaseEnum.schoolYearId + ", " + DatabaseEnum.username),
+                @Index(name = "idx_schoolyear_quizid", columnList = DatabaseEnum.schoolYearId + ", " + DatabaseEnum.quizId),
         }
 )
 public class User extends BaseEntity implements Authenticatable {

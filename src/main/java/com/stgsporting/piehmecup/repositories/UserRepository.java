@@ -87,6 +87,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                 )
             )
             FROM User u
+            LEFT JOIN u.totalChemistry tc
             WHERE u.schoolYear = :schoolYear and u.username
             LIKE :search
             ORDER BY (
@@ -108,7 +109,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         dt.description LIKE '%deleted%'
                     )
                 )
-            ) DESC, u.lineupRating.lineupRating DESC, u.id ASC
+            ) DESC, (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) DESC, u.id ASC
             """)
     Page<UserCoinsDTO> findUsersBySchoolYearPaginatedAndCoins(SchoolYear schoolYear, String search, Pageable pageable);
 
@@ -135,6 +136,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                 )
             )
             FROM User u
+            LEFT JOIN u.totalChemistry tc
             WHERE u.schoolYear = :schoolYear
             ORDER BY (
                 (
@@ -155,9 +157,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         dt.description LIKE '%deleted%'
                     )
                 )
-            ) DESC, u.lineupRating.lineupRating DESC, u.id ASC
+            ) DESC, (u.lineupRating.lineupRating + COALESCE(tc.totalChemistry, 0)) DESC, u.id ASC
             """)
     List<UserCoinsDTO> findTopUsersBySchoolYearAndCoins(SchoolYear schoolYear, Pageable pageable);
+
+    List<User> findBySchoolYearAndQuizIdIn(SchoolYear schoolYear, List<Long> quizIds);
+
+    long countBySchoolYear(SchoolYear schoolYear);
 
     List<User> findAllBySchoolYear(SchoolYear schoolYear);
 }
