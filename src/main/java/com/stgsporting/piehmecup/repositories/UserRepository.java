@@ -112,5 +112,52 @@ public interface UserRepository extends JpaRepository<User, Long> {
             """)
     Page<UserCoinsDTO> findUsersBySchoolYearPaginatedAndCoins(SchoolYear schoolYear, String search, Pageable pageable);
 
+    @Query("""
+            SELECT new com.stgsporting.piehmecup.dtos.users.UserCoinsDTO(
+                u,
+                (
+                    SELECT COALESCE(SUM(ct.amount), 0)
+                    FROM TRANSACTIONS ct
+                    WHERE ct.user = u AND ct.type = 'CREDIT' AND (
+                        ct.description LIKE '%Admin%' OR
+                        ct.description LIKE '%Attended%' OR
+                        ct.description LIKE '%Question%' OR
+                        ct.description LIKE '%Quiz%'
+                    )
+                ) - (
+                    SELECT COALESCE(SUM(dt.amount), 0)
+                    FROM TRANSACTIONS dt
+                    WHERE dt.user = u AND dt.type = 'DEBIT' AND (
+                        dt.description LIKE '%Admin%' OR
+                        dt.description LIKE '%Quiz%' OR
+                        dt.description LIKE '%deleted%'
+                    )
+                )
+            )
+            FROM User u
+            WHERE u.schoolYear = :schoolYear
+            ORDER BY (
+                (
+                    SELECT COALESCE(SUM(ct.amount), 0)
+                    FROM TRANSACTIONS ct
+                    WHERE ct.user = u AND ct.type = 'CREDIT' AND (
+                        ct.description LIKE '%Admin%' OR
+                        ct.description LIKE '%Attended%' OR
+                        ct.description LIKE '%Question%' OR
+                        ct.description LIKE '%Quiz%'
+                    )
+                ) - (
+                    SELECT COALESCE(SUM(dt.amount), 0)
+                    FROM TRANSACTIONS dt
+                    WHERE dt.user = u AND dt.type = 'DEBIT' AND (
+                        dt.description LIKE '%Admin%' OR
+                        dt.description LIKE '%Quiz%' OR
+                        dt.description LIKE '%deleted%'
+                    )
+                )
+            ) DESC, u.lineupRating.lineupRating DESC, u.id ASC
+            """)
+    List<UserCoinsDTO> findTopUsersBySchoolYearAndCoins(SchoolYear schoolYear, Pageable pageable);
+
     List<User> findAllBySchoolYear(SchoolYear schoolYear);
 }
