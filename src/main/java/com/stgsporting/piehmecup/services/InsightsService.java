@@ -27,6 +27,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,9 +40,9 @@ import java.util.function.Supplier;
 public class InsightsService {
     private static final Logger log = LoggerFactory.getLogger(InsightsService.class);
     private static final int DEFAULT_LIMIT = 10;
+    private static final int MAX_PAGE_SIZE = 50;
     private static final int QUIZ_DIFFICULTY_COUNT = 5;
     private static final int PER_QUIZ_QUESTIONS_COUNT = 3;
-    private static final int ATTEMPTED_ALL_PAGE_SIZE = 10;
 
     private final UserRepository userRepository;
     private final InsightsRepository insightsRepository;
@@ -67,10 +68,10 @@ public class InsightsService {
     public AdminStatsPageDTO getStatsPage(SchoolYear schoolYear, Long levelId) {
         long startedAt = System.currentTimeMillis();
         try {
-            List<UserMetricRowDTO> topOverallUsers = getTopOverallUsers(schoolYear, DEFAULT_LIMIT);
-            List<UserMetricRowDTO> topEarnedCoinsUsers = getTopEarnedCoinsUsers(schoolYear, DEFAULT_LIMIT);
-            List<UserMetricRowDTO> topValueUsers = getTopValueUsers(schoolYear, DEFAULT_LIMIT);
-            List<UserMetricRowDTO> topAttendanceUsers = getTopAttendanceUsers(schoolYear, DEFAULT_LIMIT);
+            List<UserMetricRowDTO> topOverallUsers = getTopOverallUsers(schoolYear, 0, DEFAULT_LIMIT).getData();
+            List<UserMetricRowDTO> topEarnedCoinsUsers = getTopEarnedCoinsUsers(schoolYear, 0, DEFAULT_LIMIT).getData();
+            List<UserMetricRowDTO> topValueUsers = getTopValueUsers(schoolYear, 0, DEFAULT_LIMIT).getData();
+            List<UserMetricRowDTO> topAttendanceUsers = getTopAttendanceUsers(schoolYear, 0, DEFAULT_LIMIT).getData();
             List<BestSellerDTO> bestSellerPlayers = insightsRepository.findBestSeller(levelId).stream()
                     .limit(DEFAULT_LIMIT)
                     .toList();
@@ -83,7 +84,7 @@ public class InsightsService {
                             .thenComparing(QuizDifficultyDTO::getQuizId))
                     .limit(QUIZ_DIFFICULTY_COUNT)
                     .toList();
-            List<HardestQuestionDTO> hardestQuestions = getHardestQuestions(schoolYear, DEFAULT_LIMIT);
+            List<HardestQuestionDTO> hardestQuestions = getHardestQuestions(schoolYear, 0, DEFAULT_LIMIT).getData();
             List<HardestQuestionsByQuizDTO> hardestQuestionsByQuiz = getHardestQuestionsByQuiz(schoolYear, PER_QUIZ_QUESTIONS_COUNT);
             ChoiceDistributionDTO mcqDistribution = hardestQuestions.isEmpty()
                     ? null
@@ -138,48 +139,62 @@ public class InsightsService {
         );
     }
 
-    public List<UserMetricRowDTO> getTopOverallUsers(SchoolYear schoolYear, int limit) {
-        return mapUserCoins(
-                insightsRepository.findTopUsersByOverallScore(schoolYear, PageRequest.of(0, normalizeLimit(limit))),
+    public PaginationDTO<UserMetricRowDTO> getTopOverallUsers(SchoolYear schoolYear, Integer page, Integer size) {
+        PageRequest pageRequest = buildPageRequest(page, size);
+        List<UserMetricRowDTO> rows = mapUserCoins(
+                insightsRepository.findTopUsersByOverallScore(schoolYear, pageRequest),
                 row -> getOverallScore(row.getUser()),
-                UserCoinsDTO::getCoins
+                UserCoinsDTO::getCoins,
+                pageRequest.getOffset() + 1
         );
+        return toPagination(rows, pageRequest, userRepository.countBySchoolYear(schoolYear));
     }
 
-    public List<UserMetricRowDTO> getTopEarnedCoinsUsers(SchoolYear schoolYear, int limit) {
-        return mapUserCoins(
-                userRepository.findTopUsersBySchoolYearAndCoins(schoolYear, PageRequest.of(0, normalizeLimit(limit))),
+    public PaginationDTO<UserMetricRowDTO> getTopEarnedCoinsUsers(SchoolYear schoolYear, Integer page, Integer size) {
+        PageRequest pageRequest = buildPageRequest(page, size);
+        List<UserMetricRowDTO> rows = mapUserCoins(
+                userRepository.findTopUsersBySchoolYearAndCoins(schoolYear, pageRequest),
                 row -> row.getCoins().doubleValue(),
-                UserCoinsDTO::getCoins
+                UserCoinsDTO::getCoins,
+                pageRequest.getOffset() + 1
         );
+        return toPagination(rows, pageRequest, userRepository.countBySchoolYear(schoolYear));
     }
 
-    public List<UserMetricRowDTO> getTopValueUsers(SchoolYear schoolYear, int limit) {
-        List<UserSpendValueDTO> users = insightsRepository.findTopUsersByValue(schoolYear, PageRequest.of(0, normalizeLimit(limit)));
+    public PaginationDTO<UserMetricRowDTO> getTopValueUsers(SchoolYear schoolYear, Integer page, Integer size) {
+        PageRequest pageRequest = buildPageRequest(page, size);
+        List<UserSpendValueDTO> users = insightsRepository.findTopUsersByValue(schoolYear, pageRequest);
         List<UserMetricRowDTO> rows = new ArrayList<>();
-        long rank = 1;
+        long rank = pageRequest.getOffset() + 1;
         for (UserSpendValueDTO row : users) {
             rows.add(toUserMetricRow(rank++, row.getUser(), row.getMetricValue(), 0));
         }
-        return rows;
+        return toPagination(rows, pageRequest, insightsRepository.countTopUsersByValue(schoolYear));
     }
 
-    public List<UserMetricRowDTO> getTopAttendanceUsers(SchoolYear schoolYear, int limit) {
-        List<UserLongMetricDTO> users = insightsRepository.findTopUsersByApprovedAttendances(schoolYear, PageRequest.of(0, normalizeLimit(limit)));
+    public PaginationDTO<UserMetricRowDTO> getTopAttendanceUsers(SchoolYear schoolYear, Integer page, Integer size) {
+        PageRequest pageRequest = buildPageRequest(page, size);
+        List<UserLongMetricDTO> users = insightsRepository.findTopUsersByApprovedAttendances(schoolYear, pageRequest);
         List<UserMetricRowDTO> rows = new ArrayList<>();
-        long rank = 1;
+        long rank = pageRequest.getOffset() + 1;
         for (UserLongMetricDTO row : users) {
             rows.add(toUserMetricRow(rank++, row.getUser(), row.getMetricValue().doubleValue(), 0));
         }
-        return rows;
+        return toPagination(rows, pageRequest, insightsRepository.countTopUsersByApprovedAttendances(schoolYear));
     }
 
     public List<QuizDifficultyDTO> getQuizDifficulty(SchoolYear schoolYear) {
         return runQuizStatsCall("getQuizDifficultyStats", schoolYear, () -> quizService.getQuizDifficultyStats(schoolYear), List.of());
     }
 
-    public List<HardestQuestionDTO> getHardestQuestions(SchoolYear schoolYear, int limit) {
-        return runQuizStatsCall("getHardestQuestionsStats", schoolYear, () -> quizService.getHardestQuestionsStats(schoolYear, limit), List.of());
+    public PaginationDTO<HardestQuestionDTO> getHardestQuestions(SchoolYear schoolYear, Integer page, Integer size) {
+        PageRequest pageRequest = buildPageRequest(page, size);
+        return runQuizStatsCall(
+                "getHardestQuestionsStats",
+                schoolYear,
+                () -> quizService.getHardestQuestionsStats(schoolYear, pageRequest.getPageNumber(), pageRequest.getPageSize()),
+                emptyPagination(pageRequest)
+        );
     }
 
     public List<HardestQuestionsByQuizDTO> getHardestQuestionsByQuiz(SchoolYear schoolYear, int limit) {
@@ -191,12 +206,13 @@ public class InsightsService {
         );
     }
 
-    public List<HardestQuestionDTO> getHardestQuestionsForQuiz(SchoolYear schoolYear, String slug, int limit) {
+    public PaginationDTO<HardestQuestionDTO> getHardestQuestionsForQuiz(SchoolYear schoolYear, String slug, Integer page, Integer size) {
+        PageRequest pageRequest = buildPageRequest(page, size);
         return runQuizStatsCall(
                 "getHardestQuestionsForQuizStats",
                 schoolYear,
-                () -> quizService.getHardestQuestionsForQuizStats(schoolYear, slug, limit),
-                List.of()
+                () -> quizService.getHardestQuestionsForQuizStats(schoolYear, slug, pageRequest.getPageNumber(), pageRequest.getPageSize()),
+                emptyPagination(pageRequest)
         );
     }
 
@@ -209,18 +225,25 @@ public class InsightsService {
         );
     }
 
-    public PaginationDTO<AttemptedAllQuizUserDTO> getUsersAttemptedAllPublishedQuizzes(SchoolYear schoolYear, Integer page) {
-        int pageNumber = page == null ? 0 : Math.max(page, 0);
+    public PaginationDTO<BestSellerDTO> getBestSellerPage(Long levelId, Integer page, Integer size) {
+        PageRequest pageRequest = buildPageRequest(page, size);
+        List<BestSellerDTO> allPlayers = insightsRepository.findBestSeller(levelId);
+        List<BestSellerDTO> pageItems = slicePage(allPlayers, pageRequest);
+        return toPagination(pageItems, pageRequest, insightsRepository.countBestSeller(levelId));
+    }
+
+    public PaginationDTO<AttemptedAllQuizUserDTO> getUsersAttemptedAllPublishedQuizzes(SchoolYear schoolYear, Integer page, Integer size) {
+        PageRequest pageRequest = buildPageRequest(page, size);
         long publishedQuizCount;
         List<EntityQuizAttemptsDTO> attempts;
         try {
             publishedQuizCount = quizService.getPublishedQuizCount(schoolYear);
             attempts = quizService.getAttemptCounts(schoolYear);
         } catch (RuntimeException exception) {
-            return new PaginationDTO<>(new PageImpl<>(List.of(), PageRequest.of(pageNumber, ATTEMPTED_ALL_PAGE_SIZE), 0));
+            return emptyPagination(pageRequest);
         }
         if (publishedQuizCount == 0) {
-            return new PaginationDTO<>(new PageImpl<>(List.of(), PageRequest.of(pageNumber, ATTEMPTED_ALL_PAGE_SIZE), 0));
+            return emptyPagination(pageRequest);
         }
 
         List<EntityQuizAttemptsDTO> filteredAttempts = attempts.stream()
@@ -228,7 +251,7 @@ public class InsightsService {
                 .toList();
 
         if (filteredAttempts.isEmpty()) {
-            return new PaginationDTO<>(new PageImpl<>(List.of(), PageRequest.of(pageNumber, ATTEMPTED_ALL_PAGE_SIZE), 0));
+            return emptyPagination(pageRequest);
         }
 
         Map<Long, Long> attemptCountsByEntityId = filteredAttempts.stream()
@@ -239,11 +262,10 @@ public class InsightsService {
                 .filter(user -> user.getQuizId() != null)
                 .collect(java.util.stream.Collectors.toMap(User::getQuizId, Function.identity()));
 
-        List<UserCoinsDTO> overallUsersWithCoins = insightsRepository.findTopUsersByOverallScore(
-                schoolYear,
-                PageRequest.of(0, (int) Math.max(userRepository.countBySchoolYear(schoolYear), 1))
-        );
-        Map<Long, Long> totalCoinsByUserId = overallUsersWithCoins.stream()
+        List<UserCoinsDTO> filteredUsersWithCoins = users.isEmpty()
+                ? Collections.emptyList()
+                : insightsRepository.findUserCoinsByIds(users.stream().map(User::getId).toList());
+        Map<Long, Long> totalCoinsByUserId = filteredUsersWithCoins.stream()
                 .collect(java.util.stream.Collectors.toMap(
                         row -> row.getUser().getId(),
                         UserCoinsDTO::getCoins,
@@ -275,19 +297,17 @@ public class InsightsService {
                         .thenComparing(AttemptedAllQuizUserDTO::getUsername))
                 .toList();
 
-        int start = Math.min(pageNumber * ATTEMPTED_ALL_PAGE_SIZE, rows.size());
-        int end = Math.min(start + ATTEMPTED_ALL_PAGE_SIZE, rows.size());
-
-        return new PaginationDTO<>(new PageImpl<>(
-                rows.subList(start, end),
-                PageRequest.of(pageNumber, ATTEMPTED_ALL_PAGE_SIZE),
-                rows.size()
-        ));
+        return toPagination(slicePage(rows, pageRequest), pageRequest, rows.size());
     }
 
-    private List<UserMetricRowDTO> mapUserCoins(List<UserCoinsDTO> users, Function<UserCoinsDTO, Double> metric, Function<UserCoinsDTO, Long> totalCoinsEarned) {
+    private List<UserMetricRowDTO> mapUserCoins(
+            List<UserCoinsDTO> users,
+            Function<UserCoinsDTO, Double> metric,
+            Function<UserCoinsDTO, Long> totalCoinsEarned,
+            long startingRank
+    ) {
         List<UserMetricRowDTO> rows = new ArrayList<>();
-        long rank = 1;
+        long rank = startingRank;
         for (UserCoinsDTO row : users) {
             rows.add(toUserMetricRow(rank++, row.getUser(), metric.apply(row), totalCoinsEarned.apply(row).intValue()));
         }
@@ -359,8 +379,24 @@ public class InsightsService {
         return Math.round(ratio * 10000.0) / 100.0;
     }
 
-    private int normalizeLimit(int limit) {
-        return limit <= 10 ? 10 : 20;
+    private PageRequest buildPageRequest(Integer page, Integer size) {
+        int pageNumber = page == null ? 0 : Math.max(page, 0);
+        int pageSize = size == null || size <= 0 ? DEFAULT_LIMIT : Math.min(size, MAX_PAGE_SIZE);
+        return PageRequest.of(pageNumber, pageSize);
+    }
+
+    private <T> PaginationDTO<T> toPagination(List<T> rows, PageRequest pageRequest, long total) {
+        return new PaginationDTO<>(new PageImpl<>(rows, pageRequest, total));
+    }
+
+    private <T> PaginationDTO<T> emptyPagination(PageRequest pageRequest) {
+        return toPagination(List.of(), pageRequest, 0);
+    }
+
+    private <T> List<T> slicePage(List<T> rows, PageRequest pageRequest) {
+        int start = (int) Math.min(pageRequest.getOffset(), rows.size());
+        int end = Math.min(start + pageRequest.getPageSize(), rows.size());
+        return rows.subList(start, end);
     }
 
     private <T> T runQuizStatsCall(String label, SchoolYear schoolYear, Supplier<T> supplier, T fallback) {

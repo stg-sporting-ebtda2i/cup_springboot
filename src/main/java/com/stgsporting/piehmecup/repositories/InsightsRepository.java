@@ -24,6 +24,11 @@ public interface InsightsRepository extends JpaRepository<Player, Long> {
             "ORDER BY COUNT(op) DESC")
     List<BestSellerDTO> findBestSeller(@Param("levelId") Long levelId);
 
+    @Query("SELECT COUNT(DISTINCT p.id) " +
+            "FROM OwnedPlayer op JOIN op.player p " +
+            "WHERE (:levelId IS NULL OR p.level.id = :levelId)")
+    long countBestSeller(@Param("levelId") Long levelId);
+
     @Query("""
             SELECT new com.stgsporting.piehmecup.dtos.users.UserCoinsDTO(
                 u,
@@ -74,6 +79,33 @@ public interface InsightsRepository extends JpaRepository<Player, Long> {
                 u.id ASC
             """)
     List<UserCoinsDTO> findTopUsersByOverallScore(@Param("schoolYear") SchoolYear schoolYear, Pageable pageable);
+
+    @Query("""
+            SELECT new com.stgsporting.piehmecup.dtos.users.UserCoinsDTO(
+                u,
+                (
+                    SELECT COALESCE(SUM(ct.amount), 0)
+                    FROM TRANSACTIONS ct
+                    WHERE ct.user = u AND ct.type = 'CREDIT' AND (
+                        ct.description LIKE '%Admin%' OR
+                        ct.description LIKE '%Attended%' OR
+                        ct.description LIKE '%Question%' OR
+                        ct.description LIKE '%Quiz%'
+                    )
+                ) - (
+                    SELECT COALESCE(SUM(dt.amount), 0)
+                    FROM TRANSACTIONS dt
+                    WHERE dt.user = u AND dt.type = 'DEBIT' AND (
+                        dt.description LIKE '%Admin%' OR
+                        dt.description LIKE '%Quiz%' OR
+                        dt.description LIKE '%deleted%'
+                    )
+                )
+            )
+            FROM User u
+            WHERE u.id IN :userIds
+            """)
+    List<UserCoinsDTO> findUserCoinsByIds(@Param("userIds") List<Long> userIds);
 
     @Query("""
             SELECT new com.stgsporting.piehmecup.dtos.insights.UserSpendValueDTO(
@@ -128,6 +160,20 @@ public interface InsightsRepository extends JpaRepository<Player, Long> {
     List<UserSpendValueDTO> findTopUsersByValue(@Param("schoolYear") SchoolYear schoolYear, Pageable pageable);
 
     @Query("""
+            SELECT COUNT(u)
+            FROM User u
+            WHERE u.schoolYear = :schoolYear
+            AND (
+                SELECT COALESCE(SUM(dt.amount), 0)
+                FROM TRANSACTIONS dt
+                WHERE dt.user = u
+                AND dt.type = 'DEBIT'
+                AND dt.description LIKE 'Player purchase:%'
+            ) > 0
+            """)
+    long countTopUsersByValue(@Param("schoolYear") SchoolYear schoolYear);
+
+    @Query("""
             SELECT new com.stgsporting.piehmecup.dtos.insights.UserLongMetricDTO(u, COUNT(a))
             FROM ATTENDANCE a
             JOIN a.user u
@@ -137,6 +183,14 @@ public interface InsightsRepository extends JpaRepository<Player, Long> {
             ORDER BY COUNT(a) DESC, u.id ASC
             """)
     List<UserLongMetricDTO> findTopUsersByApprovedAttendances(@Param("schoolYear") SchoolYear schoolYear, Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(DISTINCT a.user.id)
+            FROM ATTENDANCE a
+            WHERE a.user.schoolYear = :schoolYear
+            AND a.approved = true
+            """)
+    long countTopUsersByApprovedAttendances(@Param("schoolYear") SchoolYear schoolYear);
 
     @Query("""
             SELECT COUNT(a)

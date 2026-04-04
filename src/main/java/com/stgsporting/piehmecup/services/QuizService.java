@@ -1,6 +1,7 @@
 package com.stgsporting.piehmecup.services;
 
 import com.stgsporting.piehmecup.authentication.Authenticatable;
+import com.stgsporting.piehmecup.dtos.PaginationDTO;
 import com.stgsporting.piehmecup.dtos.insights.ChoiceDistributionDTO;
 import com.stgsporting.piehmecup.dtos.insights.EntityQuizAttemptsDTO;
 import com.stgsporting.piehmecup.dtos.insights.HardestQuestionDTO;
@@ -18,6 +19,8 @@ import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -266,20 +269,29 @@ public class QuizService {
                 .toList();
     }
 
-    public List<HardestQuestionDTO> getHardestQuestionsStats(SchoolYear schoolYear, Integer limit) {
+    public PaginationDTO<HardestQuestionDTO> getHardestQuestionsStats(SchoolYear schoolYear, Integer page, Integer size) {
+        int pageNumber = normalizePage(page);
+        int pageSize = normalizePageSize(size);
         JSONObject jsonObject = getStatsJson(
                 "hardestQuestions",
-                "/quizzes/stats/questions/hardest?group=" + schoolYear.getSlug() + "&limit=" + normalizeStatsLimit(limit),
+                "/quizzes/stats/questions/hardest?group=" + schoolYear.getSlug() + "&page=" + pageNumber + "&size=" + pageSize,
                 schoolYear
         );
         JSONArray questions = (JSONArray) jsonObject.get("questions");
+        long totalElements = jsonObject.getAsNumber("totalElements").longValue();
 
-        return questions == null
+        List<HardestQuestionDTO> items = questions == null
                 ? List.of()
                 : questions.stream()
                 .map(JSONObject.class::cast)
                 .map(HardestQuestionDTO::fromJson)
                 .toList();
+
+        return new PaginationDTO<>(new PageImpl<>(
+                items,
+                PageRequest.of(pageNumber, pageSize),
+                totalElements
+        ));
     }
 
     public List<HardestQuestionsByQuizDTO> getHardestQuestionsByQuizStats(SchoolYear schoolYear, Integer limit) {
@@ -298,20 +310,34 @@ public class QuizService {
                 .toList();
     }
 
-    public List<HardestQuestionDTO> getHardestQuestionsForQuizStats(SchoolYear schoolYear, String slug, Integer limit) {
+    public PaginationDTO<HardestQuestionDTO> getHardestQuestionsForQuizStats(
+            SchoolYear schoolYear,
+            String slug,
+            Integer page,
+            Integer size
+    ) {
+        int pageNumber = normalizePage(page);
+        int pageSize = normalizePageSize(size);
         JSONObject jsonObject = getStatsJson(
                 "hardestQuestionsForQuiz",
-                "/quizzes/stats/quizzes/" + slug + "/questions/hardest?group=" + schoolYear.getSlug() + "&limit=" + normalizeStatsLimit(limit),
+                "/quizzes/stats/quizzes/" + slug + "/questions/hardest?group=" + schoolYear.getSlug() + "&page=" + pageNumber + "&size=" + pageSize,
                 schoolYear
         );
         JSONArray questions = (JSONArray) jsonObject.get("questions");
+        long totalElements = jsonObject.getAsNumber("totalElements").longValue();
 
-        return questions == null
+        List<HardestQuestionDTO> items = questions == null
                 ? List.of()
                 : questions.stream()
                 .map(JSONObject.class::cast)
                 .map(HardestQuestionDTO::fromJson)
                 .toList();
+
+        return new PaginationDTO<>(new PageImpl<>(
+                items,
+                PageRequest.of(pageNumber, pageSize),
+                totalElements
+        ));
     }
 
     public ChoiceDistributionDTO getQuestionDistributionStats(SchoolYear schoolYear, Long questionId) {
@@ -445,6 +471,22 @@ public class QuizService {
         }
 
         return limit <= 10 ? 10 : 20;
+    }
+
+    private int normalizePage(Integer page) {
+        if (page == null || page < 0) {
+            return 0;
+        }
+
+        return page;
+    }
+
+    private int normalizePageSize(Integer size) {
+        if (size == null || size <= 0) {
+            return 10;
+        }
+
+        return Math.min(size, 50);
     }
 
     private int normalizePerQuizLimit(Integer limit) {

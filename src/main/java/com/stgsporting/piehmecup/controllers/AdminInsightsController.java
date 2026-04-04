@@ -35,38 +35,57 @@ public class AdminInsightsController {
     }
 
     @GetMapping("/stats/users/overall")
-    public ResponseEntity<Object> topOverallUsers(@RequestParam(defaultValue = "10") Integer limit) {
+    public ResponseEntity<Object> topOverallUsers(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
         Admin admin = (Admin) adminService.getAuthenticatable();
-        return ResponseEntity.ok(insightsService.getTopOverallUsers(admin.getSchoolYear(), limit));
+        return ResponseEntity.ok(insightsService.getTopOverallUsers(admin.getSchoolYear(), page, size));
     }
 
     @GetMapping("/stats/users/coins")
-    public ResponseEntity<Object> topEarnedCoinsUsers(@RequestParam(defaultValue = "10") Integer limit) {
+    public ResponseEntity<Object> topEarnedCoinsUsers(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
         Admin admin = (Admin) adminService.getAuthenticatable();
-        return ResponseEntity.ok(insightsService.getTopEarnedCoinsUsers(admin.getSchoolYear(), limit));
+        return ResponseEntity.ok(insightsService.getTopEarnedCoinsUsers(admin.getSchoolYear(), page, size));
     }
 
     @GetMapping("/stats/users/value")
-    public ResponseEntity<Object> topValueUsers(@RequestParam(defaultValue = "10") Integer limit) {
+    public ResponseEntity<Object> topValueUsers(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
         Admin admin = (Admin) adminService.getAuthenticatable();
-        return ResponseEntity.ok(insightsService.getTopValueUsers(admin.getSchoolYear(), limit));
+        return ResponseEntity.ok(insightsService.getTopValueUsers(admin.getSchoolYear(), page, size));
     }
 
     @GetMapping("/stats/attendance")
-    public ResponseEntity<Object> topAttendanceUsers(@RequestParam(defaultValue = "10") Integer limit) {
+    public ResponseEntity<Object> topAttendanceUsers(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
         Admin admin = (Admin) adminService.getAuthenticatable();
-        return ResponseEntity.ok(insightsService.getTopAttendanceUsers(admin.getSchoolYear(), limit));
+        return ResponseEntity.ok(insightsService.getTopAttendanceUsers(admin.getSchoolYear(), page, size));
     }
 
     @GetMapping("/stats/users/attempted-all")
-    public ResponseEntity<Object> usersAttemptedAllQuizzes(@RequestParam @Nullable Integer page) {
+    public ResponseEntity<Object> usersAttemptedAllQuizzes(
+            @RequestParam @Nullable Integer page,
+            @RequestParam @Nullable Integer size
+    ) {
         Admin admin = (Admin) adminService.getAuthenticatable();
-        return ResponseEntity.ok(insightsService.getUsersAttemptedAllPublishedQuizzes(admin.getSchoolYear(), page));
+        return ResponseEntity.ok(insightsService.getUsersAttemptedAllPublishedQuizzes(admin.getSchoolYear(), page, size));
     }
 
     @GetMapping("/stats/players/best-sellers")
-    public ResponseEntity<Object> bestSellerPlayers(@RequestParam(required = false) Long levelId) {
-        return ResponseEntity.ok(insightsService.findBestSeller(levelId));
+    public ResponseEntity<Object> bestSellerPlayers(
+            @RequestParam(required = false) Long levelId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        return ResponseEntity.ok(insightsService.getBestSellerPage(levelId, page, size));
     }
 
     @GetMapping("/stats/quizzes/difficulty")
@@ -76,9 +95,12 @@ public class AdminInsightsController {
     }
 
     @GetMapping("/stats/questions/hardest")
-    public ResponseEntity<Object> hardestQuestions(@RequestParam(defaultValue = "10") Integer limit) {
+    public ResponseEntity<Object> hardestQuestions(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
         Admin admin = (Admin) adminService.getAuthenticatable();
-        return ResponseEntity.ok(insightsService.getHardestQuestions(admin.getSchoolYear(), limit));
+        return ResponseEntity.ok(insightsService.getHardestQuestions(admin.getSchoolYear(), page, size));
     }
 
     @GetMapping("/stats/questions/by-quiz")
@@ -90,10 +112,11 @@ public class AdminInsightsController {
     @GetMapping("/stats/quizzes/{slug}/questions/hardest")
     public ResponseEntity<Object> hardestQuestionsForQuiz(
             @PathVariable String slug,
-            @RequestParam(defaultValue = "10") Integer limit
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
     ) {
         Admin admin = (Admin) adminService.getAuthenticatable();
-        return ResponseEntity.ok(insightsService.getHardestQuestionsForQuiz(admin.getSchoolYear(), slug, limit));
+        return ResponseEntity.ok(insightsService.getHardestQuestionsForQuiz(admin.getSchoolYear(), slug, page, size));
     }
 
     @GetMapping("/stats/questions/{questionId}/distribution")
