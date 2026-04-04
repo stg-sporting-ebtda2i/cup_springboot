@@ -28,6 +28,12 @@ public class AdminInsightsController {
         return ResponseEntity.ok(insightsService.getStatsPage(admin.getSchoolYear(), levelId));
     }
 
+    @GetMapping("/stats/summary")
+    public ResponseEntity<Object> summary() {
+        Admin admin = (Admin) adminService.getAuthenticatable();
+        return ResponseEntity.ok(insightsService.getStatsSummary(admin.getSchoolYear()));
+    }
+
     @GetMapping("/stats/users/overall")
     public ResponseEntity<Object> topOverallUsers(@RequestParam(defaultValue = "10") Integer limit) {
         Admin admin = (Admin) adminService.getAuthenticatable();
@@ -73,6 +79,12 @@ public class AdminInsightsController {
     public ResponseEntity<Object> hardestQuestions(@RequestParam(defaultValue = "10") Integer limit) {
         Admin admin = (Admin) adminService.getAuthenticatable();
         return ResponseEntity.ok(insightsService.getHardestQuestions(admin.getSchoolYear(), limit));
+    }
+
+    @GetMapping("/stats/questions/by-quiz")
+    public ResponseEntity<Object> hardestQuestionsByQuiz(@RequestParam(defaultValue = "3") Integer limit) {
+        Admin admin = (Admin) adminService.getAuthenticatable();
+        return ResponseEntity.ok(insightsService.getHardestQuestionsByQuiz(admin.getSchoolYear(), limit));
     }
 
     @GetMapping("/stats/quizzes/{slug}/questions/hardest")

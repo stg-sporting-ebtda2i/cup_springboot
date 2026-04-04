@@ -16,6 +16,8 @@ import com.stgsporting.piehmecup.exceptions.UserNotFoundException;
 import com.stgsporting.piehmecup.helpers.Response;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +26,7 @@ import java.util.List;
 
 @Service
 public class QuizService {
+    private static final Logger log = LoggerFactory.getLogger(QuizService.class);
     private final UserService userService;
     private final EntityService entityService;
     private final HttpService httpService;
@@ -242,7 +245,7 @@ public class QuizService {
     }
 
     public QuizStatsSummaryDTO getQuizStatsSummary(SchoolYear schoolYear) {
-        JSONObject jsonObject = getStatsJson("/quizzes/stats/summary?group=" + schoolYear.getSlug());
+        JSONObject jsonObject = getStatsJson("summary", "/quizzes/stats/summary?group=" + schoolYear.getSlug(), schoolYear);
         JSONObject summary = (JSONObject) jsonObject.get("summary");
 
         return new QuizStatsSummaryDTO(
@@ -252,7 +255,7 @@ public class QuizService {
     }
 
     public List<QuizDifficultyDTO> getQuizDifficultyStats(SchoolYear schoolYear) {
-        JSONObject jsonObject = getStatsJson("/quizzes/stats/difficulty?group=" + schoolYear.getSlug());
+        JSONObject jsonObject = getStatsJson("difficulty", "/quizzes/stats/difficulty?group=" + schoolYear.getSlug(), schoolYear);
         JSONArray quizzes = (JSONArray) jsonObject.get("quizzes");
 
         return quizzes == null
@@ -264,7 +267,11 @@ public class QuizService {
     }
 
     public List<HardestQuestionDTO> getHardestQuestionsStats(SchoolYear schoolYear, Integer limit) {
-        JSONObject jsonObject = getStatsJson("/quizzes/stats/questions/hardest?group=" + schoolYear.getSlug() + "&limit=" + normalizeStatsLimit(limit));
+        JSONObject jsonObject = getStatsJson(
+                "hardestQuestions",
+                "/quizzes/stats/questions/hardest?group=" + schoolYear.getSlug() + "&limit=" + normalizeStatsLimit(limit),
+                schoolYear
+        );
         JSONArray questions = (JSONArray) jsonObject.get("questions");
 
         return questions == null
@@ -276,7 +283,11 @@ public class QuizService {
     }
 
     public List<HardestQuestionsByQuizDTO> getHardestQuestionsByQuizStats(SchoolYear schoolYear, Integer limit) {
-        JSONObject jsonObject = getStatsJson("/quizzes/stats/questions/by-quiz?group=" + schoolYear.getSlug() + "&limit=" + normalizePerQuizLimit(limit));
+        JSONObject jsonObject = getStatsJson(
+                "hardestQuestionsByQuiz",
+                "/quizzes/stats/questions/by-quiz?group=" + schoolYear.getSlug() + "&limit=" + normalizePerQuizLimit(limit),
+                schoolYear
+        );
         JSONArray quizzes = (JSONArray) jsonObject.get("quizzes");
 
         return quizzes == null
@@ -289,7 +300,9 @@ public class QuizService {
 
     public List<HardestQuestionDTO> getHardestQuestionsForQuizStats(SchoolYear schoolYear, String slug, Integer limit) {
         JSONObject jsonObject = getStatsJson(
-                "/quizzes/stats/quizzes/" + slug + "/questions/hardest?group=" + schoolYear.getSlug() + "&limit=" + normalizeStatsLimit(limit)
+                "hardestQuestionsForQuiz",
+                "/quizzes/stats/quizzes/" + slug + "/questions/hardest?group=" + schoolYear.getSlug() + "&limit=" + normalizeStatsLimit(limit),
+                schoolYear
         );
         JSONArray questions = (JSONArray) jsonObject.get("questions");
 
@@ -302,7 +315,11 @@ public class QuizService {
     }
 
     public ChoiceDistributionDTO getQuestionDistributionStats(SchoolYear schoolYear, Long questionId) {
-        JSONObject jsonObject = getStatsJson("/quizzes/stats/questions/" + questionId + "/distribution?group=" + schoolYear.getSlug());
+        JSONObject jsonObject = getStatsJson(
+                "questionDistribution",
+                "/quizzes/stats/questions/" + questionId + "/distribution?group=" + schoolYear.getSlug(),
+                schoolYear
+        );
         JSONObject distribution = (JSONObject) jsonObject.get("distribution");
 
         if (distribution == null) {
@@ -313,7 +330,7 @@ public class QuizService {
     }
 
     public List<EntityQuizAttemptsDTO> getAttemptCounts(SchoolYear schoolYear) {
-        JSONObject jsonObject = getStatsJson("/quizzes/stats/attempts?group=" + schoolYear.getSlug());
+        JSONObject jsonObject = getStatsJson("attemptCounts", "/quizzes/stats/attempts?group=" + schoolYear.getSlug(), schoolYear);
         JSONArray attempts = (JSONArray) jsonObject.get("attempts");
 
         return attempts == null
@@ -328,7 +345,7 @@ public class QuizService {
     }
 
     public Long getPublishedQuizCount(SchoolYear schoolYear) {
-        JSONObject jsonObject = getStatsJson("/quizzes/stats/published-count?group=" + schoolYear.getSlug());
+        JSONObject jsonObject = getStatsJson("publishedCount", "/quizzes/stats/published-count?group=" + schoolYear.getSlug(), schoolYear);
         return jsonObject.getAsNumber("count").longValue();
     }
 
@@ -394,11 +411,30 @@ public class QuizService {
         return new JSONArray();
     }
 
-    private JSONObject getStatsJson(String url) {
+    private JSONObject getStatsJson(String label, String url, SchoolYear schoolYear) {
+        long startedAt = System.currentTimeMillis();
         Response response = httpService.get(url);
         if (response.isSuccessful()) {
+            log.info(
+                    "Quiz stats {} completed in {} ms for schoolYear={} url={}{}",
+                    label,
+                    System.currentTimeMillis() - startedAt,
+                    schoolYear.getSlug(),
+                    httpService.getBaseUrl(),
+                    url
+            );
             return response.getJsonBody();
         }
+
+        log.warn(
+                "Quiz stats {} failed in {} ms for schoolYear={} status={} url={}{}",
+                label,
+                System.currentTimeMillis() - startedAt,
+                schoolYear.getSlug(),
+                response.getStatusCode(),
+                httpService.getBaseUrl(),
+                url
+        );
 
         throw new NotFoundException("Quiz stats not found");
     }

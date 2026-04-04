@@ -33,4 +33,8 @@ public class HttpService {
     public Response delete(String url) {
         return new Http(BASE_URL + url, API_KEY, API_SECRET).delete();
     }
+
+    public String getBaseUrl() {
+        return BASE_URL;
+    }
 }
