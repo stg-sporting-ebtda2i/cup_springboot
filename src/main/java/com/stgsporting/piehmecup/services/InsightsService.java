@@ -4,22 +4,30 @@ import com.stgsporting.piehmecup.dtos.insights.AdminStatsPageDTO;
 import com.stgsporting.piehmecup.dtos.insights.AttemptedAllQuizUserDTO;
 import com.stgsporting.piehmecup.dtos.insights.BestSellerDTO;
 import com.stgsporting.piehmecup.dtos.insights.ChartPointDTO;
-import com.stgsporting.piehmecup.dtos.insights.ChoiceDistributionDTO;
 import com.stgsporting.piehmecup.dtos.insights.EntityQuizAttemptsDTO;
 import com.stgsporting.piehmecup.dtos.insights.HardestQuestionDTO;
 import com.stgsporting.piehmecup.dtos.insights.HardestQuestionsByQuizDTO;
+import com.stgsporting.piehmecup.dtos.insights.QuestionDistributionDTO;
 import com.stgsporting.piehmecup.dtos.insights.QuizDifficultyDTO;
+import com.stgsporting.piehmecup.dtos.insights.ReorderPermutationDTO;
 import com.stgsporting.piehmecup.dtos.insights.QuizStatsSummaryDTO;
 import com.stgsporting.piehmecup.dtos.insights.StatsSummaryDTO;
 import com.stgsporting.piehmecup.dtos.insights.UserLongMetricDTO;
 import com.stgsporting.piehmecup.dtos.insights.UserMetricRowDTO;
 import com.stgsporting.piehmecup.dtos.insights.UserSpendValueDTO;
+import com.stgsporting.piehmecup.dtos.insights.WrittenAnswerGroupDTO;
 import com.stgsporting.piehmecup.dtos.PaginationDTO;
 import com.stgsporting.piehmecup.dtos.users.UserCoinsDTO;
+import com.stgsporting.piehmecup.dtos.users.UserResponseDTO;
+import com.stgsporting.piehmecup.entities.Option;
+import com.stgsporting.piehmecup.entities.Question;
+import com.stgsporting.piehmecup.entities.Quiz;
 import com.stgsporting.piehmecup.entities.SchoolYear;
 import com.stgsporting.piehmecup.entities.User;
+import com.stgsporting.piehmecup.enums.QuestionType;
 import com.stgsporting.piehmecup.repositories.InsightsRepository;
 import com.stgsporting.piehmecup.repositories.UserRepository;
+import net.minidev.json.JSONArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageImpl;
@@ -27,12 +35,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -86,7 +97,7 @@ public class InsightsService {
                     .toList();
             List<HardestQuestionDTO> hardestQuestions = getHardestQuestions(schoolYear, 0, DEFAULT_LIMIT).getData();
             List<HardestQuestionsByQuizDTO> hardestQuestionsByQuiz = getHardestQuestionsByQuiz(schoolYear, PER_QUIZ_QUESTIONS_COUNT);
-            ChoiceDistributionDTO mcqDistribution = hardestQuestions.isEmpty()
+            QuestionDistributionDTO mcqDistribution = hardestQuestions.isEmpty()
                     ? null
                     : getQuestionDistribution(schoolYear, hardestQuestions.get(0).getQuestionId());
 
@@ -216,13 +227,292 @@ public class InsightsService {
         );
     }
 
-    public ChoiceDistributionDTO getQuestionDistribution(SchoolYear schoolYear, Long questionId) {
-        return runQuizStatsCall(
-                "getQuestionDistributionStats",
-                schoolYear,
-                () -> quizService.getQuestionDistributionStats(schoolYear, questionId),
+    public QuestionDistributionDTO getQuestionDistribution(SchoolYear schoolYear, Long questionId) {
+        try {
+            return buildQuestionDistribution(schoolYear, questionId);
+        } catch (Exception e) {
+            log.warn("Failed to build question distribution for schoolYear={} questionId={}", schoolYear.getSlug(), questionId, e);
+            return null;
+        }
+    }
+
+    private QuestionDistributionDTO buildQuestionDistribution(SchoolYear schoolYear, Long questionId) {
+        QuestionContext context = findQuestionContext(schoolYear, questionId);
+        if (context == null) {
+            return null;
+        }
+
+        return switch (context.question().getType()) {
+            case Choice -> buildChoiceDistribution(context);
+            case Written -> buildWrittenDistribution(context);
+            case Reorder -> buildReorderDistribution(context);
+            case MultipleCorrectChoices -> buildChoiceDistribution(context);
+        };
+    }
+
+    private QuestionContext findQuestionContext(SchoolYear schoolYear, Long questionId) {
+        List<Quiz> quizzes = quizService.getQuizzes(schoolYear, null);
+        for (Quiz quizSummary : quizzes) {
+            Quiz quiz = quizService.getQuizBySlug(quizSummary.getSlug(), schoolYear, true, true);
+            if (quiz.getQuestions() == null) {
+                continue;
+            }
+
+            for (Question question : quiz.getQuestions()) {
+                if (Objects.equals(question.getId(), questionId)) {
+                    return new QuestionContext(quiz, question);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private QuestionDistributionDTO buildChoiceDistribution(QuestionContext context) {
+        Question question = context.question();
+        Quiz quiz = context.quiz();
+        List<Long> correctAnswers = parseLongList(question.getAnswers());
+        long totalResponses = countNonEmptyAnswers(context, answer -> !parseLongList(answer).isEmpty());
+
+        List<com.stgsporting.piehmecup.dtos.insights.ChoiceDistributionOptionDTO> options = question.getOptions().stream()
+                .sorted(Comparator.comparingLong(Option::getOrder))
+                .map(option -> {
+                    long picksCount = context.answers().stream()
+                            .map(UserResponseDTO.Answer::getAnswer)
+                            .map(this::parseLongList)
+                            .filter(selected -> selected.contains(option.getOrder()))
+                            .count();
+
+                    return new com.stgsporting.piehmecup.dtos.insights.ChoiceDistributionOptionDTO(
+                            option.getId(),
+                            option.getName(),
+                            option.getOrder(),
+                            picksCount,
+                            totalResponses == 0 ? 0D : (double) picksCount / totalResponses,
+                            correctAnswers.contains(option.getOrder())
+                    );
+                })
+                .toList();
+
+        return new QuestionDistributionDTO(
+                "choice",
+                quiz.getId(),
+                quiz.getSlug(),
+                quiz.getName(),
+                question.getId(),
+                question.getTitle(),
+                question.getType().name(),
+                totalResponses,
+                null,
+                options,
+                null,
                 null
         );
+    }
+
+    private QuestionDistributionDTO buildWrittenDistribution(QuestionContext context) {
+        Question question = context.question();
+        Quiz quiz = context.quiz();
+        Map<String, MutableWrittenGroup> groupedAnswers = new LinkedHashMap<>();
+
+        for (UserResponseDTO.Answer answer : context.answers()) {
+            Object rawAnswer = answer.getAnswer();
+            if (!(rawAnswer instanceof String answerText)) {
+                continue;
+            }
+
+            String trimmed = answerText.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+
+            String normalized = trimmed.toLowerCase();
+            MutableWrittenGroup group = groupedAnswers.computeIfAbsent(normalized, key -> new MutableWrittenGroup(normalized));
+            group.count++;
+            group.examples.merge(trimmed, 1L, Long::sum);
+        }
+
+        long totalResponses = groupedAnswers.values().stream().mapToLong(group -> group.count).sum();
+        List<WrittenAnswerGroupDTO> answers = groupedAnswers.values().stream()
+                .map(group -> new WrittenAnswerGroupDTO(
+                        group.normalizedAnswer,
+                        group.displayAnswer(),
+                        group.count,
+                        totalResponses == 0 ? 0D : (double) group.count / totalResponses
+                ))
+                .sorted(Comparator.comparingLong(WrittenAnswerGroupDTO::getCount).reversed()
+                        .thenComparing(WrittenAnswerGroupDTO::getDisplayAnswer, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        return new QuestionDistributionDTO(
+                "written",
+                quiz.getId(),
+                quiz.getSlug(),
+                quiz.getName(),
+                question.getId(),
+                question.getTitle(),
+                question.getType().name(),
+                totalResponses,
+                (long) groupedAnswers.size(),
+                null,
+                answers,
+                null
+        );
+    }
+
+    private QuestionDistributionDTO buildReorderDistribution(QuestionContext context) {
+        Question question = context.question();
+        Quiz quiz = context.quiz();
+        List<Long> correctOrder = parseLongList(question.getAnswers());
+        Map<List<Long>, Long> groupedPermutations = new LinkedHashMap<>();
+
+        for (UserResponseDTO.Answer answer : context.answers()) {
+            List<Long> optionOrders = parseLongList(answer.getAnswer());
+            if (optionOrders.isEmpty()) {
+                continue;
+            }
+
+            groupedPermutations.merge(List.copyOf(optionOrders), 1L, Long::sum);
+        }
+
+        long totalResponses = groupedPermutations.values().stream().mapToLong(Long::longValue).sum();
+        Map<Long, String> optionNamesByOrder = question.getOptions().stream()
+                .collect(Collectors.toMap(Option::getOrder, Option::getName));
+
+        List<ReorderPermutationDTO> permutations = groupedPermutations.entrySet().stream()
+                .map(entry -> new ReorderPermutationDTO(
+                        entry.getKey(),
+                        entry.getKey().stream()
+                                .map(order -> optionNamesByOrder.getOrDefault(order, order.toString()))
+                                .collect(Collectors.joining(" -> ")),
+                        entry.getValue(),
+                        totalResponses == 0 ? 0D : (double) entry.getValue() / totalResponses,
+                        entry.getKey().equals(correctOrder)
+                ))
+                .sorted(Comparator.comparingLong(ReorderPermutationDTO::getCount).reversed()
+                        .thenComparing(ReorderPermutationDTO::getSequenceLabel, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        return new QuestionDistributionDTO(
+                "reorder",
+                quiz.getId(),
+                quiz.getSlug(),
+                quiz.getName(),
+                question.getId(),
+                question.getTitle(),
+                question.getType().name(),
+                totalResponses,
+                (long) groupedPermutations.size(),
+                null,
+                null,
+                permutations
+        );
+    }
+
+    private long countNonEmptyAnswers(QuestionContext context, Function<Object, Boolean> predicate) {
+        return context.answers().stream()
+                .map(UserResponseDTO.Answer::getAnswer)
+                .filter(Objects::nonNull)
+                .filter(answer -> Boolean.TRUE.equals(predicate.apply(answer)))
+                .count();
+    }
+
+    private List<Long> parseLongList(Object rawAnswer) {
+        if (rawAnswer == null) {
+            return List.of();
+        }
+
+        if (rawAnswer instanceof JSONArray jsonArray) {
+            return jsonArray.stream()
+                    .map(this::parseLongValue)
+                    .filter(Objects::nonNull)
+                    .toList();
+        }
+
+        if (rawAnswer instanceof List<?> list) {
+            return list.stream()
+                    .map(this::parseLongValue)
+                    .filter(Objects::nonNull)
+                    .toList();
+        }
+
+        Long value = parseLongValue(rawAnswer);
+        return value == null ? List.of() : List.of(value);
+    }
+
+    private Long parseLongValue(Object rawValue) {
+        if (rawValue instanceof Number number) {
+            return number.longValue();
+        }
+
+        if (rawValue instanceof String value) {
+            String trimmed = value.trim();
+            if (trimmed.isEmpty()) {
+                return null;
+            }
+
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                return null;
+            }
+
+            try {
+                return Long.parseLong(trimmed);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private List<UserResponseDTO.Answer> getAnswersForQuestion(Quiz quiz, Long questionId) {
+        if (quiz.getResponses() == null) {
+            return List.of();
+        }
+
+        List<UserResponseDTO.Answer> answers = new ArrayList<>();
+        for (UserResponseDTO response : quiz.getResponses()) {
+            if (response.getAnswers() == null) {
+                continue;
+            }
+
+            UserResponseDTO.Answer answer = response.getAnswers().get(questionId.toString());
+            if (answer != null) {
+                answers.add(answer);
+            }
+        }
+
+        return answers;
+    }
+
+    private record QuestionContext(Quiz quiz, Question question) {
+        private List<UserResponseDTO.Answer> answers() {
+            return quiz.getResponses() == null
+                    ? List.of()
+                    : quiz.getResponses().stream()
+                    .map(response -> response.getAnswers() == null ? null : response.getAnswers().get(question.getId().toString()))
+                    .filter(Objects::nonNull)
+                    .toList();
+        }
+    }
+
+    private static class MutableWrittenGroup {
+        private final String normalizedAnswer;
+        private long count;
+        private final Map<String, Long> examples = new LinkedHashMap<>();
+
+        private MutableWrittenGroup(String normalizedAnswer) {
+            this.normalizedAnswer = normalizedAnswer;
+        }
+
+        private String displayAnswer() {
+            return examples.entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+                            .thenComparing(Map.Entry::getKey, String.CASE_INSENSITIVE_ORDER))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElse(normalizedAnswer);
+        }
     }
 
     public PaginationDTO<BestSellerDTO> getBestSellerPage(Long levelId, Integer page, Integer size) {

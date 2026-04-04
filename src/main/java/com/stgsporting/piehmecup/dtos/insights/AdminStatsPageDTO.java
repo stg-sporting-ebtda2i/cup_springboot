@@ -22,7 +22,7 @@ public class AdminStatsPageDTO {
     private List<HardestQuestionDTO> hardestQuestions;
     private List<HardestQuestionsByQuizDTO> hardestQuestionsByQuiz;
     private List<BestSellerDTO> bestSellerPlayers;
-    private ChoiceDistributionDTO mcqDistribution;
+    private QuestionDistributionDTO mcqDistribution;
     private List<ChartPointDTO> quizDifficultyChart;
     private List<ChartPointDTO> bestSellerChart;
     private List<ChartPointDTO> attendanceChart;

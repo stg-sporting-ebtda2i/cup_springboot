@@ -2,7 +2,6 @@ package com.stgsporting.piehmecup.services;
 
 import com.stgsporting.piehmecup.authentication.Authenticatable;
 import com.stgsporting.piehmecup.dtos.PaginationDTO;
-import com.stgsporting.piehmecup.dtos.insights.ChoiceDistributionDTO;
 import com.stgsporting.piehmecup.dtos.insights.EntityQuizAttemptsDTO;
 import com.stgsporting.piehmecup.dtos.insights.HardestQuestionDTO;
 import com.stgsporting.piehmecup.dtos.insights.HardestQuestionsByQuizDTO;
@@ -338,21 +337,6 @@ public class QuizService {
                 PageRequest.of(pageNumber, pageSize),
                 totalElements
         ));
-    }
-
-    public ChoiceDistributionDTO getQuestionDistributionStats(SchoolYear schoolYear, Long questionId) {
-        JSONObject jsonObject = getStatsJson(
-                "questionDistribution",
-                "/quizzes/stats/questions/" + questionId + "/distribution?group=" + schoolYear.getSlug(),
-                schoolYear
-        );
-        JSONObject distribution = (JSONObject) jsonObject.get("distribution");
-
-        if (distribution == null) {
-            return null;
-        }
-
-        return ChoiceDistributionDTO.fromJson(distribution);
     }
 
     public List<EntityQuizAttemptsDTO> getAttemptCounts(SchoolYear schoolYear) {
