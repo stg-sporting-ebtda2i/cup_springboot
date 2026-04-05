@@ -582,8 +582,8 @@ public class InsightsService {
                     );
                 })
                 .filter(Objects::nonNull)
-                .sorted(Comparator.comparing(AttemptedAllQuizUserDTO::getOverallScore, Comparator.reverseOrder())
-                        .thenComparing(AttemptedAllQuizUserDTO::getTotalCoinsEarned, Comparator.reverseOrder())
+                .sorted(Comparator.comparing(AttemptedAllQuizUserDTO::getTotalCoinsEarned, Comparator.reverseOrder())
+                        .thenComparing(AttemptedAllQuizUserDTO::getOverallScore, Comparator.reverseOrder())
                         .thenComparing(AttemptedAllQuizUserDTO::getUsername))
                 .toList();
 
